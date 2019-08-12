@@ -224,7 +224,7 @@ fn prf_ock(
 ///     jubjub::fs::Fs,
 ///     keys::OutgoingViewingKey,
 ///     note_encryption::{Memo, SaplingNoteEncryption},
-///     primitives::{Diversifier, PaymentAddress, ValueCommitment},
+///     primitives::{AssetType, Diversifier, PaymentAddress, ValueCommitment},
 ///     JUBJUB,
 /// };
 ///
@@ -238,6 +238,7 @@ fn prf_ock(
 /// let value = 1000;
 /// let rcv = Fs::random(&mut rng);
 /// let cv = ValueCommitment::<Bls12> {
+///     asset_type: AssetType::Zcash,
 ///     value,
 ///     randomness: rcv.clone(),
 /// };
@@ -551,7 +552,7 @@ mod tests {
             fs::{Fs, FsRepr},
             PrimeOrder, Unknown,
         },
-        primitives::{Diversifier, PaymentAddress, ValueCommitment},
+        primitives::{AssetType, Diversifier, PaymentAddress, ValueCommitment},
     };
     use crypto_api_chachapoly::ChachaPolyIetf;
     use ff::{Field, PrimeField, PrimeFieldRepr};
@@ -740,6 +741,7 @@ mod tests {
         // Construct the value commitment for the proof instance
         let value = 100;
         let value_commitment = ValueCommitment::<Bls12> {
+            asset_type: AssetType::Zcash,
             value,
             randomness: Fs::random(&mut rng),
         };

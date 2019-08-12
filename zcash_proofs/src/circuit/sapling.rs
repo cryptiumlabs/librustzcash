@@ -544,7 +544,7 @@ fn test_input_circuit_with_bls12_381() {
     use zcash_primitives::{
         jubjub::{edwards, fs, JubjubBls12},
         pedersen_hash,
-        primitives::{Diversifier, Note, ProofGenerationKey},
+        primitives::{AssetType, Diversifier, Note, ProofGenerationKey},
     };
 
     let params = &JubjubBls12::new();
@@ -557,6 +557,7 @@ fn test_input_circuit_with_bls12_381() {
 
     for _ in 0..10 {
         let value_commitment = ValueCommitment {
+            asset_type: AssetType::Zcash,
             value: rng.next_u64(),
             randomness: fs::Fs::random(rng),
         };
@@ -779,6 +780,7 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
                 Fr::from_str(&expected_cm_ys[i as usize]).unwrap()
             );
             let note = Note {
+                asset_type: AssetType::Zcash,
                 value: value_commitment.value,
                 g_d: g_d.clone(),
                 pk_d: payment_address.pk_d().clone(),
@@ -876,8 +878,8 @@ fn test_output_circuit_with_bls12_381() {
     use rand_core::{RngCore, SeedableRng};
     use rand_xorshift::XorShiftRng;
     use zcash_primitives::{
-        jubjub::{edwards, fs, JubjubBls12},
-        primitives::{Diversifier, ProofGenerationKey},
+        jubjub::{JubjubBls12, fs, edwards},
+        primitives::{AssetType, Diversifier, ProofGenerationKey},
     };
 
     let params = &JubjubBls12::new();
@@ -888,6 +890,7 @@ fn test_output_circuit_with_bls12_381() {
 
     for _ in 0..100 {
         let value_commitment = ValueCommitment {
+            asset_type: AssetType::Zcash,
             value: rng.next_u64(),
             randomness: fs::Fs::random(rng),
         };

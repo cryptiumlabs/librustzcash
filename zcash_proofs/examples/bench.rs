@@ -1,3 +1,27 @@
+extern crate ff;
+extern crate bellman;
+extern crate pairing;
+extern crate rand_core;
+extern crate rand_xorshift;
+extern crate zcash_primitives;
+extern crate zcash_proofs;
+
+use ff::Field;
+use std::time::{Duration, Instant};
+use zcash_primitives::jubjub::{
+    JubjubBls12,
+    edwards,
+    fs,
+};
+use zcash_proofs::circuit::sapling::{
+    Spend
+};
+use zcash_primitives::primitives::{
+    AssetType,
+    Diversifier,
+    ProofGenerationKey,
+    ValueCommitment
+};
 use bellman::groth16::*;
 use ff::Field;
 use pairing::bls12_381::{Bls12, Fr};
@@ -38,6 +62,7 @@ fn main() {
     let mut total_time = Duration::new(0, 0);
     for _ in 0..SAMPLES {
         let value_commitment = ValueCommitment {
+            asset_type: AssetType::Zcash,
             value: 1,
             randomness: fs::Fs::random(rng),
         };

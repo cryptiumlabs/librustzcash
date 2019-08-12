@@ -3,7 +3,7 @@
 use crate::zip32::ExtendedSpendingKey;
 use crate::{
     jubjub::fs::Fs,
-    primitives::{Diversifier, Note, PaymentAddress},
+    primitives::{AssetType, Diversifier, Note, PaymentAddress},
 };
 use ff::Field;
 use pairing::bls12_381::{Bls12, Fr};
@@ -82,6 +82,7 @@ impl SaplingOutput {
         let rcm = Fs::random(rng);
 
         let note = Note {
+            asset_type: AssetType::Zcash,
             g_d,
             pk_d: to.pk_d().clone(),
             value: value.into(),
@@ -588,6 +589,7 @@ impl<R: RngCore + CryptoRng> Builder<R> {
                     (
                         payment_address,
                         Note {
+                            asset_type: AssetType::Zcash,
                             g_d,
                             pk_d,
                             r: Fs::random(&mut self.rng),

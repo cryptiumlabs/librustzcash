@@ -49,6 +49,10 @@ use zcash_primitives::{
         edwards,
         fs::{Fs, FsRepr},
         FixedGenerators, JubjubEngine, JubjubParams, PrimeOrder, ToUniform, Unknown,
+    merkle_tree::CommitmentTreeWitness,
+    note_encryption::sapling_ka_agree,
+    primitives::{
+        AssetType, Diversifier, Note, PaymentAddress, ProofGenerationKey, ViewingKey,
     },
     merkle_tree::MerklePath,
     note_encryption::sapling_ka_agree,
@@ -413,6 +417,7 @@ fn priv_get_note(
     let r = Fs::from_repr(read_fs(unsafe { &*r })).map_err(|_| ())?;
 
     let note = Note {
+        asset_type: AssetType::Zcash,
         value,
         g_d,
         pk_d,

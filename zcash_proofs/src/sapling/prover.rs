@@ -7,7 +7,7 @@ use pairing::bls12_381::{Bls12, Fr};
 use rand_core::OsRng;
 use zcash_primitives::{
     jubjub::{edwards, fs::Fs, FixedGenerators, JubjubBls12, Unknown},
-    primitives::{Diversifier, Note, PaymentAddress, ProofGenerationKey, ValueCommitment},
+    primitives::{AssetType, Diversifier, Note, PaymentAddress, ProofGenerationKey, ValueCommitment},
 };
 use zcash_primitives::{
     merkle_tree::MerklePath,
@@ -75,7 +75,8 @@ impl SaplingProvingContext {
 
         // Construct the value commitment
         let value_commitment = ValueCommitment::<Bls12> {
-            value,
+            asset_type: AssetType::Zcash,
+            value: value,
             randomness: rcv,
         };
 
@@ -96,7 +97,8 @@ impl SaplingProvingContext {
 
         // Let's compute the nullifier while we have the position
         let note = Note {
-            value,
+            asset_type: AssetType::Zcash,
+            value: value,
             g_d: diversifier
                 .g_d::<Bls12>(params)
                 .expect("was a valid diversifier before"),
@@ -210,7 +212,8 @@ impl SaplingProvingContext {
 
         // Construct the value commitment for the proof instance
         let value_commitment = ValueCommitment::<Bls12> {
-            value,
+            asset_type: AssetType::Zcash,
+            value: value,
             randomness: rcv,
         };
 
