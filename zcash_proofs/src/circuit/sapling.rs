@@ -76,6 +76,19 @@ where
     E: JubjubEngine,
     CS: ConstraintSystem<E>,
 {
+    // Witness the asset type
+    let asset_type = ecc::EdwardsPoint::witness(
+        cs.namespace(|| "asset_type"),
+        value_commitment.as_ref().map(|c| c.asset_type.value_commitment_generator(params)),
+        params
+    )?;
+
+    // Check that asset_type is not a small order point
+    asset_type.assert_not_small_order(
+        cs.namespace(|| "asset_type not small order"),
+        params
+    )?;
+
     // Booleanize the value into little-endian bit order
     let value_bits = boolean::u64_into_boolean_vec_le(
         cs.namespace(|| "value"),
@@ -83,9 +96,8 @@ where
     )?;
 
     // Compute the note value in the exponent
-    let value = ecc::fixed_base_multiplication(
+    let value = asset_type.mul(
         cs.namespace(|| "compute the value in the exponent"),
-        FixedGenerators::ValueCommitmentValue,
         &value_bits,
         params,
     )?;
