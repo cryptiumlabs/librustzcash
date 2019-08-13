@@ -971,10 +971,12 @@ fn test_output_circuit_with_bls12_381() {
                 "c26d5cdfe6ccd65c03390902c02e11393ea6bb96aae32a7f2ecb12eb9103faee"
             );
 
-            let expected_cm = payment_address
-                .create_note(value_commitment.value, commitment_randomness, params)
-                .expect("should be valid")
-                .cm(params);
+            let expected_cm = payment_address.create_note(
+                value_commitment.asset_type,
+                value_commitment.value,
+                commitment_randomness,
+                params
+            ).expect("should be valid").cm(params);
 
             let expected_value_cm = value_commitment.cm(params).to_xy();
 

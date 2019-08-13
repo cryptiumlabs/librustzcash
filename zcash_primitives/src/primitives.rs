@@ -15,12 +15,25 @@ use crate::jubjub::{edwards, FixedGenerators, JubjubEngine, JubjubParams, PrimeO
 
 use blake2s_simd::Params as Blake2sParams;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AssetType {
     Zcash,
 }
 
 impl AssetType {
+    pub fn from_note_plaintext(id: u32) -> Option<AssetType> {
+        match id {
+            0 => Some(AssetType::Zcash),
+            _ => None,
+        }
+    }
+
+    pub fn to_note_plaintext(&self) -> u32 {
+        match *self {
+            AssetType::Zcash => 0,
+        }
+    }
+
     /// Returns the tag for this asset type.
     fn tag(&self) -> &[u8] {
         match *self {
@@ -239,6 +252,7 @@ impl<E: JubjubEngine> PaymentAddress<E> {
 
     pub fn create_note(
         &self,
+        asset_type: AssetType,
         value: u64,
         randomness: E::Fs,
         params: &E::Params
@@ -246,7 +260,7 @@ impl<E: JubjubEngine> PaymentAddress<E> {
     {
         self.g_d(params).map(|g_d| {
             Note {
-                asset_type: AssetType::Zcash,
+                asset_type,
                 value: value,
                 r: randomness,
                 g_d: g_d,

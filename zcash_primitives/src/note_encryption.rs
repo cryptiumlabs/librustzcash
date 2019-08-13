@@ -6,7 +6,7 @@ use crate::{
         fs::{Fs, FsRepr},
         PrimeOrder, ToUniform, Unknown,
     },
-    primitives::{Diversifier, Note, PaymentAddress},
+    primitives::{AssetType, Diversifier, Note, PaymentAddress},
 };
 use blake2b_simd::{Hash as Blake2bHash, Params as Blake2bParams};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -26,6 +26,7 @@ const COMPACT_NOTE_SIZE: usize = (
     1  + // version
     11 + // diversifier
     8  + // value
+    4  + // asset_type
     32
     // rcv
 );
@@ -306,8 +307,10 @@ impl SaplingNoteEncryption {
         self.note
             .r
             .into_repr()
-            .write_le(&mut input[20..COMPACT_NOTE_SIZE])
+            .write_le(&mut input[20..COMPACT_NOTE_SIZE - 4])
             .unwrap();
+        input[COMPACT_NOTE_SIZE - 4..COMPACT_NOTE_SIZE]
+            .copy_from_slice(&self.note.asset_type.to_note_plaintext().to_le_bytes());
         input[COMPACT_NOTE_SIZE..NOTE_PLAINTEXT_SIZE].copy_from_slice(&self.memo.0);
 
         let mut output = [0u8; ENC_CIPHERTEXT_SIZE];
@@ -365,7 +368,7 @@ fn parse_note_plaintext_without_memo(
     let v = (&plaintext[12..20]).read_u64::<LittleEndian>().ok()?;
 
     let mut rcm = FsRepr::default();
-    rcm.read_le(&plaintext[20..COMPACT_NOTE_SIZE]).ok()?;
+    rcm.read_le(&plaintext[20..COMPACT_NOTE_SIZE - 4]).ok()?;
     let rcm = Fs::from_repr(rcm).ok()?;
 
     let diversifier = Diversifier(d);
@@ -373,8 +376,16 @@ fn parse_note_plaintext_without_memo(
         .g_d::<Bls12>(&JUBJUB)?
         .mul(ivk.into_repr(), &JUBJUB);
 
-    let to = PaymentAddress::from_parts(diversifier, pk_d)?;
-    let note = to.create_note(v, rcm, &JUBJUB).unwrap();
+    let asset_type = {
+        let mut tmp = [0; 4];
+        tmp.copy_from_slice(&plaintext[COMPACT_NOTE_SIZE - 4..COMPACT_NOTE_SIZE]);
+        AssetType::from_note_plaintext(u32::from_le_bytes(tmp))
+    }?;
+
+    let to = PaymentAddress { pk_d, diversifier };
+    //TODO: was different in master branch:
+    //let to = PaymentAddress::from_parts(diversifier, pk_d)?;
+    let note = to.create_note(asset_type, v, rcm, &JUBJUB).unwrap();
 
     if note.cm(&JUBJUB) != *cmu {
         // Published commitment doesn't match calculated commitment
@@ -517,8 +528,14 @@ pub fn try_sapling_output_recovery(
     let v = (&plaintext[12..20]).read_u64::<LittleEndian>().ok()?;
 
     let mut rcm = FsRepr::default();
-    rcm.read_le(&plaintext[20..COMPACT_NOTE_SIZE]).ok()?;
+    rcm.read_le(&plaintext[20..COMPACT_NOTE_SIZE - 4]).ok()?;
     let rcm = Fs::from_repr(rcm).ok()?;
+
+    let asset_type = {
+        let mut tmp = [0; 4];
+        tmp.copy_from_slice(&plaintext[COMPACT_NOTE_SIZE - 4..COMPACT_NOTE_SIZE]);
+        AssetType::from_note_plaintext(u32::from_le_bytes(tmp))
+    }?;
 
     let mut memo = [0u8; 512];
     memo.copy_from_slice(&plaintext[COMPACT_NOTE_SIZE..NOTE_PLAINTEXT_SIZE]);
@@ -533,8 +550,9 @@ pub fn try_sapling_output_recovery(
         return None;
     }
 
-    let to = PaymentAddress::from_parts(diversifier, pk_d)?;
-    let note = to.create_note(v, rcm, &JUBJUB).unwrap();
+    let to = PaymentAddress { pk_d, diversifier }; // TODO: is different in master
+    //let to = PaymentAddress::from_parts(diversifier, pk_d)?;
+    let note = to.create_note(asset_type, v, rcm, &JUBJUB).unwrap();
 
     if note.cm(&JUBJUB) != *cmu {
         // Published commitment doesn't match calculated commitment
@@ -748,7 +766,7 @@ mod tests {
         let cv = value_commitment.cm(&JUBJUB).into();
 
         let note = pa
-            .create_note(value, Fs::random(&mut rng), &JUBJUB)
+            .create_note(AssetType::Zcash, value, Fs::random(&mut rng), &JUBJUB)
             .unwrap();
         let cmu = note.cm(&JUBJUB);
 
@@ -1349,8 +1367,13 @@ mod tests {
             let ock = prf_ock(&ovk, &cv, &cmu, &epk);
             assert_eq!(ock.as_bytes(), tv.ock);
 
-            let to = PaymentAddress::from_parts(Diversifier(tv.default_d), pk_d).unwrap();
-            let note = to.create_note(tv.v, rcm, &JUBJUB).unwrap();
+            let to = PaymentAddress {
+                pk_d,
+                diversifier: Diversifier(tv.default_d),
+            };
+            //TODO: was different in master
+            //let to = PaymentAddress::from_parts(Diversifier(tv.default_d), pk_d).unwrap();
+            let note = to.create_note(AssetType::Zcash, tv.v, rcm, &JUBJUB).unwrap();
             assert_eq!(note.cm(&JUBJUB), cmu);
 
             //
