@@ -6,7 +6,7 @@ use pairing::bls12_381::{Bls12, Fr};
 use std::path::Path;
 use zcash_primitives::{
     jubjub::{edwards, fs::Fs, Unknown},
-    primitives::{Diversifier, PaymentAddress, ProofGenerationKey},
+    primitives::{AssetType, Diversifier, PaymentAddress, ProofGenerationKey},
 };
 use zcash_primitives::{
     merkle_tree::MerklePath,
@@ -141,6 +141,7 @@ impl TxProver for LocalTxProver {
             diversifier,
             rcm,
             ar,
+            AssetType::Zcash,
             value,
             anchor,
             merkle_path,
@@ -169,6 +170,7 @@ impl TxProver for LocalTxProver {
             esk,
             payment_address,
             rcm,
+            AssetType::Zcash,
             value,
             &self.output_params,
             &JUBJUB,
