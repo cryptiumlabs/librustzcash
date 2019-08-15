@@ -252,6 +252,7 @@ impl SaplingProvingContext {
     /// and output_proof() must be completed before calling this function.
     pub fn binding_sig(
         &self,
+        asset_type: AssetType,
         value_balance: Amount,
         sighash: &[u8; 32],
         params: &JubjubBls12,
@@ -270,7 +271,10 @@ impl SaplingProvingContext {
         // against our derived bvk.
         {
             // Compute value balance
-            let mut value_balance = compute_value_balance(value_balance, params).ok_or(())?;
+            let mut value_balance = match compute_value_balance(asset_type, value_balance, params) {
+                Some(a) => a,
+                None => return Err(()),
+            };
 
             // Subtract value_balance from cv_sum to get final bvk
             value_balance = value_balance.negate();

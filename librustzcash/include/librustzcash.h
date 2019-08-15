@@ -126,6 +126,7 @@ extern "C" {
     /// we can internally check consistency.
     bool librustzcash_sapling_binding_sig(
         const void *ctx,
+        uint32_t assetType,
         int64_t valueBalance,
         const unsigned char *sighash,
         unsigned char *result
@@ -166,6 +167,7 @@ extern "C" {
     /// transaction given valueBalance and the binding signature.
     bool librustzcash_sapling_final_check(
         void *ctx,
+        uint32_t assetType,
         int64_t valueBalance,
         const unsigned char *bindingSig,
         const unsigned char *sighashValue
