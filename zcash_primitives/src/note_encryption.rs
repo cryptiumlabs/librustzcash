@@ -382,9 +382,9 @@ fn parse_note_plaintext_without_memo(
         AssetType::from_note_plaintext(u32::from_le_bytes(tmp))
     }?;
 
-    let to = PaymentAddress { pk_d, diversifier };
+    //let to = PaymentAddress { pk_d, diversifier };
     //TODO: was different in master branch:
-    //let to = PaymentAddress::from_parts(diversifier, pk_d)?;
+    let to = PaymentAddress::from_parts(diversifier, pk_d)?;
     let note = to.create_note(asset_type, v, rcm, &JUBJUB).unwrap();
 
     if note.cm(&JUBJUB) != *cmu {
@@ -550,8 +550,8 @@ pub fn try_sapling_output_recovery(
         return None;
     }
 
-    let to = PaymentAddress { pk_d, diversifier }; // TODO: is different in master
-    //let to = PaymentAddress::from_parts(diversifier, pk_d)?;
+    //let to = PaymentAddress { pk_d, diversifier }; // TODO: is different in master
+    let to = PaymentAddress::from_parts(diversifier, pk_d)?;
     let note = to.create_note(asset_type, v, rcm, &JUBJUB).unwrap();
 
     if note.cm(&JUBJUB) != *cmu {
@@ -1367,12 +1367,12 @@ mod tests {
             let ock = prf_ock(&ovk, &cv, &cmu, &epk);
             assert_eq!(ock.as_bytes(), tv.ock);
 
-            let to = PaymentAddress {
-                pk_d,
-                diversifier: Diversifier(tv.default_d),
-            };
+            //let to = PaymentAddress {
+            //    pk_d,
+            //    diversifier: Diversifier(tv.default_d),
+            //};
             //TODO: was different in master
-            //let to = PaymentAddress::from_parts(Diversifier(tv.default_d), pk_d).unwrap();
+            let to = PaymentAddress::from_parts(Diversifier(tv.default_d), pk_d).unwrap();
             let note = to.create_note(AssetType::Zcash, tv.v, rcm, &JUBJUB).unwrap();
             assert_eq!(note.cm(&JUBJUB), cmu);
 

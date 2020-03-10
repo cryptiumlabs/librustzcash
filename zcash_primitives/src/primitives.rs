@@ -4,8 +4,8 @@ use ff::{Field, PrimeField, PrimeFieldRepr};
 
 use crate::constants;
 
-use crate::group_hash::group_hash;
-use group_hash::{find_group_hash, group_hash};
+//use crate::group_hash::group_hash;
+use crate::group_hash::{find_group_hash, group_hash};
 
 use crate::pedersen_hash::{pedersen_hash, Personalization};
 
