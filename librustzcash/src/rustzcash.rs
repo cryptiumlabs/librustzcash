@@ -49,14 +49,10 @@ use zcash_primitives::{
         edwards,
         fs::{Fs, FsRepr},
         FixedGenerators, JubjubEngine, JubjubParams, PrimeOrder, ToUniform, Unknown,
-    merkle_tree::CommitmentTreeWitness,
-    note_encryption::sapling_ka_agree,
-    primitives::{
-        AssetType, Diversifier, Note, PaymentAddress, ProofGenerationKey, ViewingKey,
     },
     merkle_tree::MerklePath,
     note_encryption::sapling_ka_agree,
-    primitives::{Diversifier, Note, PaymentAddress, ProofGenerationKey, ViewingKey},
+    primitives::{AssetType, Diversifier, Note, PaymentAddress, ProofGenerationKey, ViewingKey,},
     redjubjub::{self, Signature},
     sapling::{merkle_hash, spend_sig},
     transaction::components::Amount,
@@ -402,7 +398,7 @@ pub extern "C" fn librustzcash_sapling_generate_r(result: *mut [c_uchar; 32]) {
 fn priv_get_note(
     diversifier: *const [c_uchar; 11],
     pk_d: *const [c_uchar; 32],
-    asset_type: u32,
+    asset_identifier: *const [c_uchar; 32],
     value: u64,
     r: *const [c_uchar; 32],
 ) -> Result<Note<Bls12>, ()> {
@@ -414,7 +410,7 @@ fn priv_get_note(
 
     let pk_d = pk_d.as_prime_order(&JUBJUB).ok_or(())?;
 
-    let asset_type = match AssetType::from_note_plaintext(asset_type) {
+    let asset_type = match AssetType::<Bls12>::from_identifier(&unsafe { *asset_identifier }, &JUBJUB) {
         Some(a) => a,
         None => return Err(()),
     };
@@ -443,7 +439,7 @@ fn priv_get_note(
 pub extern "C" fn librustzcash_sapling_compute_nf(
     diversifier: *const [c_uchar; 11],
     pk_d: *const [c_uchar; 32],
-    asset_type: u32,
+    asset_identifier: *const [c_uchar; 32],
     value: u64,
     r: *const [c_uchar; 32],
     ak: *const [c_uchar; 32],
@@ -451,7 +447,7 @@ pub extern "C" fn librustzcash_sapling_compute_nf(
     position: u64,
     result: *mut [c_uchar; 32],
 ) -> bool {
-    let note = match priv_get_note(diversifier, pk_d, asset_type, value, r) {
+    let note = match priv_get_note(diversifier, pk_d, &unsafe{ *asset_identifier }, value, r) {
         Ok(p) => p,
         Err(_) => return false,
     };
@@ -494,12 +490,12 @@ pub extern "C" fn librustzcash_sapling_compute_nf(
 pub extern "C" fn librustzcash_sapling_compute_cm(
     diversifier: *const [c_uchar; 11],
     pk_d: *const [c_uchar; 32],
-    asset_type: u32,
+    asset_identifier: *const [c_uchar; 32],
     value: u64,
     r: *const [c_uchar; 32],
     result: *mut [c_uchar; 32],
 ) -> bool {
-    let note = match priv_get_note(diversifier, pk_d, asset_type, value, r) {
+    let note = match priv_get_note(diversifier, pk_d, &unsafe{ *asset_identifier }, value, r) {
         Ok(p) => p,
         Err(_) => return false,
     };
@@ -724,12 +720,12 @@ pub extern "C" fn librustzcash_sapling_check_output(
 #[no_mangle]
 pub extern "C" fn librustzcash_sapling_final_check(
     ctx: *mut SaplingVerificationContext,
-    asset_type: u32,
+    asset_identifier: *const [c_uchar; 32],
     value_balance: i64,
     binding_sig: *const [c_uchar; 64],
     sighash_value: *const [c_uchar; 32],
 ) -> bool {
-    let asset_type = match AssetType::from_note_plaintext(asset_type) {
+    let asset_type = match AssetType::<Bls12>::from_identifier(&unsafe{ *asset_identifier }, &JUBJUB) {
         Some(a) => a,
         None => return false,
     };
@@ -875,7 +871,7 @@ pub extern "C" fn librustzcash_sapling_output_proof(
     esk: *const [c_uchar; 32],
     payment_address: *const [c_uchar; 43],
     rcm: *const [c_uchar; 32],
-    asset_type: u32,
+    asset_identifier: *const [c_uchar; 32],
     value: u64,
     cv: *mut [c_uchar; 32],
     zkproof: *mut [c_uchar; GROTH_PROOF_SIZE],
@@ -899,7 +895,7 @@ pub extern "C" fn librustzcash_sapling_output_proof(
         Err(_) => return false,
     };
 
-    let asset_type = match AssetType::from_note_plaintext(asset_type) {
+    let asset_type = match AssetType::<Bls12>::from_identifier(&unsafe{ *asset_identifier }, &JUBJUB) {
         Some(a) => a,
         None => return false,
     };
@@ -972,12 +968,12 @@ pub extern "C" fn librustzcash_sapling_spend_sig(
 #[no_mangle]
 pub extern "C" fn librustzcash_sapling_binding_sig(
     ctx: *const SaplingProvingContext,
-    asset_type: u32,
+    asset_identifier: *const [c_uchar; 32],
     value_balance: i64,
     sighash: *const [c_uchar; 32],
     result: *mut [c_uchar; 64],
 ) -> bool {
-    let asset_type = match AssetType::from_note_plaintext(asset_type) {
+    let asset_type = match AssetType::<Bls12>::from_identifier(&unsafe{ *asset_identifier }, &JUBJUB) {
         Some(a) => a,
         None => return false,
     };
@@ -1011,7 +1007,7 @@ pub extern "C" fn librustzcash_sapling_spend_proof(
     diversifier: *const [c_uchar; 11],
     rcm: *const [c_uchar; 32],
     ar: *const [c_uchar; 32],
-    asset_type: u32,
+    asset_identifier: *const [c_uchar; 32],
     value: u64,
     anchor: *const [c_uchar; 32],
     merkle_path: *const [c_uchar; 1 + 33 * SAPLING_TREE_DEPTH + 8],
@@ -1058,7 +1054,7 @@ pub extern "C" fn librustzcash_sapling_spend_proof(
         Err(_) => return false,
     };
 
-    let asset_type = match AssetType::from_note_plaintext(asset_type) {
+    let asset_type = match AssetType::<Bls12>::from_identifier(&unsafe{ *asset_identifier }, &JUBJUB) {
         Some(a) => a,
         None => return false,
     };

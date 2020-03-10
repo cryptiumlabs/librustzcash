@@ -3,6 +3,7 @@ use pairing::bls12_381::Bls12;
 use zcash_primitives::{
     jubjub::{fs::FsRepr, FixedGenerators, JubjubEngine, JubjubParams},
     primitives::{AssetType, Diversifier, ProofGenerationKey},
+    ASSET_TYPE_DEFAULT,
 };
 
 use super::JUBJUB;
@@ -719,7 +720,7 @@ fn key_components() {
         let mut note_r_repr = FsRepr::default();
         note_r_repr.read_le(&tv.note_r[..]).unwrap();
         let note_r = <Bls12 as JubjubEngine>::Fs::from_repr(note_r_repr).unwrap();
-        let note = addr.create_note(AssetType::Zcash, tv.note_v, note_r, &JUBJUB).unwrap();
+        let note = addr.create_note(*ASSET_TYPE_DEFAULT, tv.note_v, note_r, &JUBJUB).unwrap();
         {
             let mut vec = Vec::new();
             note.cm(&JUBJUB).into_repr().write_le(&mut vec).unwrap();

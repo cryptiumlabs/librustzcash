@@ -17,7 +17,7 @@ pub use self::verifier::SaplingVerificationContext;
 
 // This function computes `value` in the exponent of the value commitment base
 fn compute_value_balance(
-    asset_type: AssetType,
+    asset_type: AssetType<Bls12>,
     value: Amount,
     params: &JubjubBls12,
 ) -> Option<edwards::Point<Bls12, Unknown>> {
