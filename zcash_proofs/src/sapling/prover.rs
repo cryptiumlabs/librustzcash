@@ -44,7 +44,7 @@ impl SaplingProvingContext {
         diversifier: Diversifier,
         rcm: Fs,
         ar: Fs,
-        asset_type: AssetType,
+        asset_type: AssetType<Bls12>,
         value: u64,
         anchor: Fr,
         merkle_path: MerklePath<Node>,
@@ -76,7 +76,7 @@ impl SaplingProvingContext {
 
         // Construct the value commitment
         let value_commitment = ValueCommitment::<Bls12> {
-            asset_type,
+            asset_generator: asset_type.value_commitment_generator(params),
             value: value,
             randomness: rcv,
         };
@@ -99,7 +99,7 @@ impl SaplingProvingContext {
         // Let's compute the nullifier while we have the position
         let note = Note {
             asset_type,
-            value: value,
+            value,
             g_d: diversifier
                 .g_d::<Bls12>(params)
                 .expect("was a valid diversifier before"),
@@ -189,7 +189,7 @@ impl SaplingProvingContext {
         esk: Fs,
         payment_address: PaymentAddress<Bls12>,
         rcm: Fs,
-        asset_type: AssetType,
+        asset_type: AssetType<Bls12>,
         value: u64,
         proving_key: &Parameters<Bls12>,
         params: &JubjubBls12,
@@ -214,7 +214,7 @@ impl SaplingProvingContext {
 
         // Construct the value commitment for the proof instance
         let value_commitment = ValueCommitment::<Bls12> {
-            asset_type,
+            asset_generator: asset_type.value_commitment_generator(params),
             value: value,
             randomness: rcv,
         };
@@ -226,6 +226,7 @@ impl SaplingProvingContext {
             payment_address: Some(payment_address.clone()),
             commitment_randomness: Some(rcm),
             esk: Some(esk),
+            asset_identifier: asset_type.identifier_bits(),
         };
 
         // Create proof
@@ -252,7 +253,7 @@ impl SaplingProvingContext {
     /// and output_proof() must be completed before calling this function.
     pub fn binding_sig(
         &self,
-        asset_type: AssetType,
+        asset_type: AssetType<Bls12>,
         value_balance: Amount,
         sighash: &[u8; 32],
         params: &JubjubBls12,

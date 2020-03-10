@@ -1,5 +1,5 @@
-//! The Sapling circuits.
-
+//! The Sapling circuits with multiple asset changes
+//! Warning: changes made! for research and experimental purposes only
 use ff::{Field, PrimeField, PrimeFieldRepr};
 
 use bellman::{Circuit, ConstraintSystem, SynthesisError};
@@ -55,6 +55,9 @@ pub struct Output<'a, E: JubjubEngine> {
     /// Pedersen commitment to the value being spent
     pub value_commitment: Option<ValueCommitment<E>>,
 
+    /// Asset Type (256 bit identifier)
+    pub asset_identifier: Vec<Option<bool>>,
+
     /// The payment address of the recipient
     pub payment_address: Option<PaymentAddress<E>>,
 
@@ -76,22 +79,26 @@ fn expose_value_commitment<E, CS>(
           CS: ConstraintSystem<E>
 {
     // Witness the asset type
-    let asset_type = ecc::EdwardsPoint::witness(
-        cs.namespace(|| "asset_type"),
-        value_commitment.as_ref().map(|c| c.asset_type.value_commitment_generator(params)),
-        params
-    )?;
-
-    // Check that asset_type is not a small order point
-    asset_type.assert_not_small_order(
-        cs.namespace(|| "asset_type not small order"),
+    let asset_generator = ecc::EdwardsPoint::witness(
+        cs.namespace(|| "asset_generator"),
+        value_commitment.as_ref().map(|vc| vc.asset_generator.clone()),
         params
     )?;
 
     // Booleanize the asset type
-    let asset_type_bits = asset_type.repr(
-        cs.namespace(|| "unpack asset_type")
+    let asset_generator_bits = asset_generator.repr(
+        cs.namespace(|| "unpack asset_generator")
     )?;
+
+    let asset_generator = asset_generator.double(cs.namespace(|| "asset_generator first doubling"), params)?;
+    let asset_generator = asset_generator.double(cs.namespace(|| "asset_generator second doubling"), params)?;
+    let asset_generator = asset_generator.double(cs.namespace(|| "asset_generator third doubling"), params)?;
+
+    // (0, -1) is a small order point, but won't ever appear here
+    // because cofactor is 2^3, and we performed three doublings.
+    // (0, 1) is the neutral element, so checking if x is nonzero
+    // is sufficient to prevent small order points here.
+    asset_generator.get_x().assert_nonzero(cs.namespace(|| "check asset_generator != 0"))?;
 
     // Booleanize the value into little-endian bit order
     let value_bits = boolean::u64_into_boolean_vec_le(
@@ -100,7 +107,7 @@ fn expose_value_commitment<E, CS>(
     )?;
 
     // Compute the note value in the exponent
-    let value = asset_type.mul(
+    let value = asset_generator.mul(
         cs.namespace(|| "compute the value in the exponent"),
         &value_bits,
         params,
@@ -128,7 +135,7 @@ fn expose_value_commitment<E, CS>(
     // Expose the commitment as an input to the circuit
     cv.inputize(cs.namespace(|| "commitment point"))?;
 
-    Ok((asset_type_bits, value_bits))
+    Ok((asset_generator_bits, value_bits))
 }
 
 impl<'a, E: JubjubEngine> Circuit<E> for Spend<'a, E> {
@@ -242,7 +249,7 @@ impl<'a, E: JubjubEngine> Circuit<E> for Spend<'a, E> {
         let pk_d = g_d.mul(cs.namespace(|| "compute pk_d"), &ivk, self.params)?;
 
         // Compute note contents:
-        // asset_type || value || g_d || pk_d
+        // asset_generator || value || g_d || pk_d
         let mut note_contents = vec![];
 
         // Handle the value; we'll need it later for the
@@ -250,9 +257,9 @@ impl<'a, E: JubjubEngine> Circuit<E> for Spend<'a, E> {
         let mut value_num = num::Num::zero();
         {
             // Get the value in little-endian bit order
-            let (asset_type_bits, value_bits) = expose_value_commitment(
+            let (asset_generator_bits, value_bits) = expose_value_commitment(
                 cs.namespace(|| "value commitment"),
-                self.value_commitment,
+                self.value_commitment.as_ref().cloned(),
                 self.params,
             )?;
 
@@ -265,7 +272,7 @@ impl<'a, E: JubjubEngine> Circuit<E> for Spend<'a, E> {
             }
 
             // Place the asset type in the note
-            note_contents.extend(asset_type_bits);
+            note_contents.extend(asset_generator_bits);
 
             // Place the value in the note
             note_contents.extend(value_bits);
@@ -279,10 +286,10 @@ impl<'a, E: JubjubEngine> Circuit<E> for Spend<'a, E> {
 
         assert_eq!(
             note_contents.len(),
-            256 + // asset_type
-            64 + // value
-            256 + // g_d
-            256 // p_d
+            256 + // asset_generator bits
+            64 + // value bits
+            256 + // g_d bits
+            256 // p_d bits
         );
 
         // Compute the hash of the note contents
@@ -431,22 +438,67 @@ impl<'a, E: JubjubEngine> Circuit<E> for Spend<'a, E> {
 }
 
 impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
-    fn synthesize<CS: ConstraintSystem<E>>(self, cs: &mut CS) -> Result<(), SynthesisError>
-    {
+    fn synthesize<CS: ConstraintSystem<E>>(self, cs: &mut CS) -> Result<(), SynthesisError> {
+        use itertools::multizip;
         // Let's start to construct our note, which contains
         // value (big endian)
-        // asset_type || value || g_d || pk_d
+        // asset_generator || value || g_d || pk_d
         let mut note_contents = vec![];
 
-        // Expose the value commitment
-        let (asset_type_bits, value_bits) = expose_value_commitment(
-            cs.namespace(|| "value commitment"),
-            self.value_commitment,
-            self.params
+        let mut asset_generator_preimage = Vec::with_capacity(256);
+
+        assert_eq!(256, self.asset_identifier.len());
+
+        for (i, bit) in self.asset_identifier.iter().enumerate() { 
+            let cs = &mut cs.namespace(|| format!("witness asset type bit {}", i));
+
+            let asset_identifier_preimage_bit = boolean::Boolean::from(boolean::AllocatedBit::alloc(
+                cs.namespace(|| "asset type bit"),
+                *bit,
+            )?);
+
+            // Push this boolean for asset generator computation later
+            asset_generator_preimage.push(asset_identifier_preimage_bit.clone());
+        }
+
+        assert_eq!(256, asset_generator_preimage.len());
+
+        let asset_generator_image = blake2s::blake2s(
+            cs.namespace(|| "value base computation"),
+            &asset_generator_preimage,
+            constants::VALUE_COMMITMENT_GENERATOR_PERSONALIZATION,
         )?;
 
+        // Expose the value commitment
+        let (asset_generator_bits, value_bits) = expose_value_commitment(
+            cs.namespace(|| "value commitment"),
+            self.value_commitment,
+            self.params,
+        )?;
+
+        assert_eq!(256, asset_generator_bits.len());
+        assert_eq!(256, asset_generator_image.len());
+        
+        // Check integrity of the asset generator
+        // The following 256 constraints may not be strictly 
+        // necessary; the output of the BLAKE2s hash may be
+        // interpreted directly as a curve point instead
+        // However, witnessing the asset generator separately
+        // and checking equality to the image of the hash
+        // is conceptually clear and not particularly expensive
+        for (i, asset_generator_bit, asset_generator_image_bit) in 
+                multizip((0..256, &asset_generator_bits, &asset_generator_image)) {
+            boolean::Boolean::enforce_equal(
+                cs.namespace(|| format!("integrity of asset generator bit {}", i)),
+                asset_generator_bit, 
+                asset_generator_image_bit
+            )?;
+        }
+        // TODO: verify that edwards::Point::<E, _>::read and ecc::EdwardsPoint
+        // are always strict "inverse" 
+
         // Place the asset type in the note
-        note_contents.extend(asset_type_bits);
+        note_contents.extend(asset_generator_bits);
 
         // Place the value in the note
         note_contents.extend(value_bits);
@@ -515,7 +567,7 @@ impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
 
         assert_eq!(
             note_contents.len(),
-            256 + // asset_type
+            256 + // asset_generator_bits
             64 + // value
             256 + // g_d
             256 // pk_d
@@ -572,7 +624,8 @@ fn test_input_circuit_with_bls12_381() {
     use zcash_primitives::{
         jubjub::{edwards, fs, JubjubBls12},
         pedersen_hash,
-        primitives::{AssetType, Diversifier, Note, ProofGenerationKey},
+        primitives::{Diversifier, Note, ProofGenerationKey},
+        ASSET_TYPE_DEFAULT,
     };
 
     let params = &JubjubBls12::new();
@@ -583,9 +636,10 @@ fn test_input_circuit_with_bls12_381() {
 
     let tree_depth = 32;
 
+    let asset_type = *ASSET_TYPE_DEFAULT;
     for _ in 0..10 {
         let value_commitment = ValueCommitment {
-            asset_type: AssetType::Zcash,
+            asset_generator: asset_type.value_commitment_generator(params),  
             value: rng.next_u64(),
             randomness: fs::Fs::random(rng),
         };
@@ -624,6 +678,7 @@ fn test_input_circuit_with_bls12_381() {
             let rk = viewing_key.rk(ar, params).to_xy();
             let expected_value_cm = value_commitment.cm(params).to_xy();
             let note = Note {
+                asset_type,
                 value: value_commitment.value,
                 g_d: g_d.clone(),
                 pk_d: payment_address.pk_d().clone(),
@@ -686,10 +741,10 @@ fn test_input_circuit_with_bls12_381() {
             instance.synthesize(&mut cs).unwrap();
 
             assert!(cs.is_satisfied());
-            assert_eq!(cs.num_constraints(), 98777);
+            assert_eq!(cs.num_constraints(), 100637);
             assert_eq!(
                 cs.hash(),
-                "d37c738e83df5d9b0bb6495ac96abf21bcb2697477e2c15c2c7916ff7a3b6a89"
+                "4c55c62109c2fab9c1cf433e44fc2c85c3c05a1a04c9c4bd188ad660892ca3f4"
             );
 
             assert_eq!(cs.get("randomization of note commitment/x3/num"), cm);
@@ -724,6 +779,7 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
         jubjub::{edwards, fs, JubjubBls12},
         pedersen_hash,
         primitives::{Diversifier, Note, ProofGenerationKey},
+        ASSET_TYPE_DEFAULT,
     };
 
     let params = &JubjubBls12::new();
@@ -760,8 +816,10 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
         "32959334601512756708397683646222389414681003290313255304927423560477040775488",
     ];
 
+    let asset_type = *ASSET_TYPE_DEFAULT;
     for i in 0..10 {
         let value_commitment = ValueCommitment {
+            asset_generator: asset_type.value_commitment_generator(params),
             value: i,
             randomness: fs::Fs::from_str(&(1000 * (i + 1)).to_string()).unwrap(),
         };
@@ -808,7 +866,7 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
                 Fr::from_str(&expected_cm_ys[i as usize]).unwrap()
             );
             let note = Note {
-                asset_type: AssetType::Zcash,
+                asset_type,
                 value: value_commitment.value,
                 g_d: g_d.clone(),
                 pk_d: payment_address.pk_d().clone(),
@@ -871,10 +929,10 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
             instance.synthesize(&mut cs).unwrap();
 
             assert!(cs.is_satisfied());
-            assert_eq!(cs.num_constraints(), 98777);
+            assert_eq!(cs.num_constraints(), 100637);
             assert_eq!(
                 cs.hash(),
-                "d37c738e83df5d9b0bb6495ac96abf21bcb2697477e2c15c2c7916ff7a3b6a89"
+                "4c55c62109c2fab9c1cf433e44fc2c85c3c05a1a04c9c4bd188ad660892ca3f4"
             );
 
             assert_eq!(cs.get("randomization of note commitment/x3/num"), cm);
@@ -907,7 +965,8 @@ fn test_output_circuit_with_bls12_381() {
     use rand_xorshift::XorShiftRng;
     use zcash_primitives::{
         jubjub::{JubjubBls12, fs, edwards},
-        primitives::{AssetType, Diversifier, ProofGenerationKey},
+        primitives::{Diversifier, ProofGenerationKey},
+        ASSET_TYPE_DEFAULT,
     };
 
     let params = &JubjubBls12::new();
@@ -916,12 +975,17 @@ fn test_output_circuit_with_bls12_381() {
         0xe5,
     ]);
 
-    for _ in 0..100 {
-        let value_commitment = ValueCommitment {
-            asset_type: AssetType::Zcash,
+    for i in 0..31 {
+        let mut value_commitment = ValueCommitment {
+            asset_generator: ASSET_TYPE_DEFAULT.value_commitment_generator(params),
             value: rng.next_u64(),
             randomness: fs::Fs::random(rng),
         };
+        
+        if i == 30 {
+            value_commitment.asset_generator = ASSET_TYPE_DEFAULT.value_commitment_generator(params)
+                                                                 .negate();
+        }
 
         let nsk = fs::Fs::random(rng);
         let ak = edwards::Point::rand(rng, params).mul_by_cofactor(params);
@@ -960,19 +1024,26 @@ fn test_output_circuit_with_bls12_381() {
                 payment_address: Some(payment_address.clone()),
                 commitment_randomness: Some(commitment_randomness),
                 esk: Some(esk.clone()),
+                asset_identifier: ASSET_TYPE_DEFAULT.identifier_bits(),
             };
 
             instance.synthesize(&mut cs).unwrap();
 
-            assert!(cs.is_satisfied());
-            assert_eq!(cs.num_constraints(), 7827);
+            if i < 30 {
+                assert!(cs.is_satisfied());
+            } else {
+                assert!(!cs.is_satisfied());
+            }
+            assert_eq!(cs.num_constraints(), 31205);
             assert_eq!(
                 cs.hash(),
-                "c26d5cdfe6ccd65c03390902c02e11393ea6bb96aae32a7f2ecb12eb9103faee"
+                "79dbf2dd7446caa7ccbeecc4de9a8f44bcb7fa8cca8c77606852b68f52376a01"
             );
 
+            let asset_type = *ASSET_TYPE_DEFAULT;
+
             let expected_cm = payment_address.create_note(
-                value_commitment.asset_type,
+                asset_type,
                 value_commitment.value,
                 commitment_randomness,
                 params
@@ -998,7 +1069,9 @@ fn test_output_circuit_with_bls12_381() {
             );
             assert_eq!(cs.get_input(3, "epk/x/input variable"), expected_epk_xy.0);
             assert_eq!(cs.get_input(4, "epk/y/input variable"), expected_epk_xy.1);
-            assert_eq!(cs.get_input(5, "commitment/input variable"), expected_cm);
+            if i < 30 {
+                assert_eq!(cs.get_input(5, "commitment/input variable"), expected_cm);
+            }
         }
     }
 }
