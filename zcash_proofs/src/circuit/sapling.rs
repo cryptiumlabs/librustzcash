@@ -279,10 +279,10 @@ impl<'a, E: JubjubEngine> Circuit<E> for Spend<'a, E> {
 
         assert_eq!(
             note_contents.len(),
-            256 + // asset_type
-            64 + // value
-            256 + // g_d
-            256 // p_d
+            256 + // asset_type bits
+            64 + // value bits
+            256 + // g_d bits
+            256 // p_d bits
         );
 
         // Compute the hash of the note contents

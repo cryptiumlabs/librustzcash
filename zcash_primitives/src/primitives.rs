@@ -330,7 +330,11 @@ impl<E: JubjubEngine> Note<E> {
         // Write pk_d
         self.pk_d.write(&mut note_contents).unwrap();
 
-        assert_eq!(note_contents.len(), 32 + 32 + 32 + 8);
+        assert_eq!(note_contents.len(), 
+            32 + // asset_type bytes
+            32 + // g_d bytes 
+            32 + // p_d bytes
+            8 // value bytes);
 
         // Compute the Pedersen hash of the note contents
         let hash_of_contents = pedersen_hash(

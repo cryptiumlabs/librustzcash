@@ -50,7 +50,7 @@ use zcash_primitives::{
         fs::{Fs, FsRepr},
         FixedGenerators, JubjubEngine, JubjubParams, PrimeOrder, ToUniform, Unknown,
     },
-    //merkle_tree::CommitmentTreeWitness,
+    //merkle_tree::CommitmentTreeWitness, // Was renamed to merkle_tree::MerklePath
     primitives::{
         AssetType, Diversifier, Note, PaymentAddress, ProofGenerationKey, ViewingKey,
     },
