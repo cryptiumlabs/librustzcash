@@ -1,4 +1,4 @@
-/*extern crate ff;
+extern crate ff;
 extern crate bellman;
 extern crate pairing;
 extern crate rand_core;
@@ -21,7 +21,7 @@ use zcash_primitives::primitives::{
     Diversifier,
     ProofGenerationKey,
     ValueCommitment
-};*/
+};
 use bellman::groth16::*;
 use ff::Field;
 use pairing::bls12_381::{Bls12, Fr};
@@ -29,7 +29,7 @@ use rand_core::{RngCore, SeedableRng};
 use rand_xorshift::XorShiftRng;
 use std::time::{Duration, Instant};
 use zcash_primitives::jubjub::{edwards, fs, JubjubBls12};
-use zcash_primitives::primitives::{AssetType, Diversifier, ProofGenerationKey, ValueCommitment};
+use zcash_primitives::primitives::{Diversifier, ProofGenerationKey, ValueCommitment};
 use zcash_proofs::circuit::sapling::Spend;
 
 const TREE_DEPTH: usize = 32;

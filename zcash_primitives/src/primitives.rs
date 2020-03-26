@@ -334,8 +334,7 @@ impl<E: JubjubEngine> Note<E> {
             32 + // asset_type bytes
             32 + // g_d bytes 
             32 + // p_d bytes
-            8 // value bytes
-        );
+            8 // value bytes);
 
         // Compute the Pedersen hash of the note contents
         let hash_of_contents = pedersen_hash(

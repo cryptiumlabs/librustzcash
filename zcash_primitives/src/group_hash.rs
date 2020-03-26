@@ -54,16 +54,6 @@ pub fn find_group_hash<E: JubjubEngine>(
     let i = tag.len();
     tag.push(0u8);
 
-
-    // The following loop exists because of the (extremely small) probability of
-    // hashing to a point in a small order subgroup. Since the JubJub curve is the
-    // direct sum of a small order subgroup with a large prime order subgroup,
-    // the tag could hash to the identity in the prime order subgroup
-    // Since the prime order subgroup is large, this is unlikely to happen, so this
-    // loop is expected to run only once
-    // When it (rarely) hashes badly, detect this by multiplying by the cofactor
-    // which gives the identity when the hash is in the small order subgroup.
-    // Similarly, the assertion is unlikely to trigger
     loop {
         let gh = group_hash(
             &tag,

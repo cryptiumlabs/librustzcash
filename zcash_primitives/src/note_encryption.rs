@@ -22,28 +22,22 @@ use crate::{keys::OutgoingViewingKey, JUBJUB};
 pub const KDF_SAPLING_PERSONALIZATION: &[u8; 16] = b"Zcash_SaplingKDF";
 pub const PRF_OCK_PERSONALIZATION: &[u8; 16] = b"Zcash_Derive_ock";
 
-// size of the note minus asset type. Equal to COMPACT_NOTE_SIZE of original Sapling
-const TYPELESS_NOTE_SIZE: usize = ( // in bytes
+const COMPACT_NOTE_SIZE: usize = (
     1  + // version
     11 + // diversifier
     8  + // value
+    4  + // asset_type
     32
     // rcv
 );
-
-const TYPED_NOTE_SIZE: usize = ( // in bytes
-    TYPELESS_NOTE_SIZE + // original Sapling note size COMPACT_NOTE_SIZE
-    4 // asset_type
-);
-
-const NOTE_PLAINTEXT_SIZE: usize = TYPED_NOTE_SIZE + 512;
+const NOTE_PLAINTEXT_SIZE: usize = COMPACT_NOTE_SIZE + 512;
 const OUT_PLAINTEXT_SIZE: usize = (
     32 + // pk_d
     32
     // esk
 );
-pub const ENC_CIPHERTEXT_SIZE: usize = NOTE_PLAINTEXT_SIZE + 16;
-pub const OUT_CIPHERTEXT_SIZE: usize = OUT_PLAINTEXT_SIZE + 16;
+const ENC_CIPHERTEXT_SIZE: usize = NOTE_PLAINTEXT_SIZE + 16;
+const OUT_CIPHERTEXT_SIZE: usize = OUT_PLAINTEXT_SIZE + 16;
 
 /// Format a byte array as a colon-delimited hex string.
 ///
@@ -313,11 +307,11 @@ impl SaplingNoteEncryption {
         self.note
             .r
             .into_repr()
-            .write_le(&mut input[20..TYPELESS_NOTE_SIZE])
+            .write_le(&mut input[20..COMPACT_NOTE_SIZE - 4])
             .unwrap();
-        input[TYPELESS_NOTE_SIZE..TYPED_NOTE_SIZE]
+        input[COMPACT_NOTE_SIZE - 4..COMPACT_NOTE_SIZE]
             .copy_from_slice(&self.note.asset_type.to_note_plaintext().to_le_bytes());
-        input[TYPED_NOTE_SIZE..NOTE_PLAINTEXT_SIZE].copy_from_slice(&self.memo.0);
+        input[COMPACT_NOTE_SIZE..NOTE_PLAINTEXT_SIZE].copy_from_slice(&self.memo.0);
 
         let mut output = [0u8; ENC_CIPHERTEXT_SIZE];
         assert_eq!(
@@ -374,7 +368,7 @@ fn parse_note_plaintext_without_memo(
     let v = (&plaintext[12..20]).read_u64::<LittleEndian>().ok()?;
 
     let mut rcm = FsRepr::default();
-    rcm.read_le(&plaintext[20..TYPELESS_NOTE_SIZE]).ok()?;
+    rcm.read_le(&plaintext[20..COMPACT_NOTE_SIZE - 4]).ok()?;
     let rcm = Fs::from_repr(rcm).ok()?;
 
     let diversifier = Diversifier(d);
@@ -384,7 +378,7 @@ fn parse_note_plaintext_without_memo(
 
     let asset_type = {
         let mut tmp = [0; 4];
-        tmp.copy_from_slice(&plaintext[TYPELESS_NOTE_SIZE..TYPED_NOTE_SIZE]);
+        tmp.copy_from_slice(&plaintext[COMPACT_NOTE_SIZE - 4..COMPACT_NOTE_SIZE]);
         AssetType::from_note_plaintext(u32::from_le_bytes(tmp))
     }?;
 
@@ -436,7 +430,7 @@ pub fn try_sapling_note_decryption(
     let (note, to) = parse_note_plaintext_without_memo(ivk, cmu, &plaintext)?;
 
     let mut memo = [0u8; 512];
-    memo.copy_from_slice(&plaintext[TYPED_NOTE_SIZE..NOTE_PLAINTEXT_SIZE]);
+    memo.copy_from_slice(&plaintext[COMPACT_NOTE_SIZE..NOTE_PLAINTEXT_SIZE]);
 
     Some((note, to, Memo(memo)))
 }
@@ -456,13 +450,13 @@ pub fn try_sapling_compact_note_decryption(
     cmu: &Fr,
     enc_ciphertext: &[u8],
 ) -> Option<(Note<Bls12>, PaymentAddress<Bls12>)> {
-    assert_eq!(enc_ciphertext.len(), TYPED_NOTE_SIZE);
+    assert_eq!(enc_ciphertext.len(), COMPACT_NOTE_SIZE);
 
     let shared_secret = sapling_ka_agree(ivk, epk);
     let key = kdf_sapling(shared_secret, &epk);
 
     // Start from block 1 to skip over Poly1305 keying output
-    let mut plaintext = [0; TYPED_NOTE_SIZE];
+    let mut plaintext = [0; COMPACT_NOTE_SIZE];
     plaintext.copy_from_slice(&enc_ciphertext);
     ChaCha20Ietf::xor(key.as_bytes(), &[0u8; 12], 1, &mut plaintext);
 
@@ -534,17 +528,17 @@ pub fn try_sapling_output_recovery(
     let v = (&plaintext[12..20]).read_u64::<LittleEndian>().ok()?;
 
     let mut rcm = FsRepr::default();
-    rcm.read_le(&plaintext[20..TYPELESS_NOTE_SIZE]).ok()?;
+    rcm.read_le(&plaintext[20..COMPACT_NOTE_SIZE - 4]).ok()?;
     let rcm = Fs::from_repr(rcm).ok()?;
 
     let asset_type = {
         let mut tmp = [0; 4];
-        tmp.copy_from_slice(&plaintext[TYPELESS_NOTE_SIZE..TYPED_NOTE_SIZE]);
+        tmp.copy_from_slice(&plaintext[COMPACT_NOTE_SIZE - 4..COMPACT_NOTE_SIZE]);
         AssetType::from_note_plaintext(u32::from_le_bytes(tmp))
     }?;
 
     let mut memo = [0u8; 512];
-    memo.copy_from_slice(&plaintext[TYPED_NOTE_SIZE..NOTE_PLAINTEXT_SIZE]);
+    memo.copy_from_slice(&plaintext[COMPACT_NOTE_SIZE..NOTE_PLAINTEXT_SIZE]);
 
     let diversifier = Diversifier(d);
     if diversifier
@@ -588,7 +582,7 @@ mod tests {
     use super::{
         kdf_sapling, prf_ock, sapling_ka_agree, try_sapling_compact_note_decryption,
         try_sapling_note_decryption, try_sapling_output_recovery, Memo, SaplingNoteEncryption,
-        TYPED_NOTE_SIZE, ENC_CIPHERTEXT_SIZE, NOTE_PLAINTEXT_SIZE, OUT_CIPHERTEXT_SIZE,
+        COMPACT_NOTE_SIZE, ENC_CIPHERTEXT_SIZE, NOTE_PLAINTEXT_SIZE, OUT_CIPHERTEXT_SIZE,
         OUT_PLAINTEXT_SIZE,
     };
     use crate::{keys::OutgoingViewingKey, JUBJUB};
@@ -730,7 +724,7 @@ mod tests {
             &ivk,
             &epk,
             &cmu,
-            &enc_ciphertext[..TYPED_NOTE_SIZE]
+            &enc_ciphertext[..COMPACT_NOTE_SIZE]
         )
         .is_some());
         assert!(try_sapling_output_recovery(
@@ -1012,7 +1006,7 @@ mod tests {
                 &Fs::random(&mut rng),
                 &epk,
                 &cmu,
-                &enc_ciphertext[..TYPED_NOTE_SIZE]
+                &enc_ciphertext[..COMPACT_NOTE_SIZE]
             ),
             None
         );
@@ -1029,7 +1023,7 @@ mod tests {
                 &ivk,
                 &edwards::Point::<Bls12, _>::rand(&mut rng, &JUBJUB).mul_by_cofactor(&JUBJUB),
                 &cmu,
-                &enc_ciphertext[..TYPED_NOTE_SIZE]
+                &enc_ciphertext[..COMPACT_NOTE_SIZE]
             ),
             None
         );
@@ -1046,7 +1040,7 @@ mod tests {
                 &ivk,
                 &epk,
                 &Fr::random(&mut rng),
-                &enc_ciphertext[..TYPED_NOTE_SIZE]
+                &enc_ciphertext[..COMPACT_NOTE_SIZE]
             ),
             None
         );
@@ -1073,7 +1067,7 @@ mod tests {
                 &ivk,
                 &epk,
                 &cmu,
-                &enc_ciphertext[..TYPED_NOTE_SIZE]
+                &enc_ciphertext[..COMPACT_NOTE_SIZE]
             ),
             None
         );
@@ -1100,7 +1094,7 @@ mod tests {
                 &ivk,
                 &epk,
                 &cmu,
-                &enc_ciphertext[..TYPED_NOTE_SIZE]
+                &enc_ciphertext[..COMPACT_NOTE_SIZE]
             ),
             None
         );
@@ -1127,7 +1121,7 @@ mod tests {
                 &ivk,
                 &epk,
                 &cmu,
-                &enc_ciphertext[..TYPED_NOTE_SIZE]
+                &enc_ciphertext[..COMPACT_NOTE_SIZE]
             ),
             None
         );
@@ -1400,7 +1394,7 @@ mod tests {
                 &ivk,
                 &epk,
                 &cmu,
-                &tv.c_enc[..TYPED_NOTE_SIZE],
+                &tv.c_enc[..COMPACT_NOTE_SIZE],
             ) {
                 Some((decrypted_note, decrypted_to)) => {
                     assert_eq!(decrypted_note, note);
