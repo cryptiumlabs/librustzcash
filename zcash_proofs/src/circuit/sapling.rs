@@ -1,5 +1,5 @@
-//! The Sapling circuits.
-
+//! The Sapling circuits with multiple asset changes
+//! Warning: changes made! for research and experimental purposes only
 use ff::{Field, PrimeField, PrimeFieldRepr};
 
 use bellman::{Circuit, ConstraintSystem, SynthesisError};
