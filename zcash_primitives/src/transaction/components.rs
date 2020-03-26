@@ -9,6 +9,7 @@ use std::io::{self, Read, Write};
 use crate::legacy::Script;
 use crate::redjubjub::{PublicKey, Signature};
 use crate::JUBJUB;
+use crate::note_encryption::{ENC_CIPHERTEXT_SIZE, OUT_CIPHERTEXT_SIZE};
 
 pub mod amount;
 pub use self::amount::Amount;
@@ -193,8 +194,8 @@ pub struct OutputDescription {
     pub cv: edwards::Point<Bls12, Unknown>,
     pub cmu: Fr,
     pub ephemeral_key: edwards::Point<Bls12, Unknown>,
-    pub enc_ciphertext: [u8; 584],
-    pub out_ciphertext: [u8; 80],
+    pub enc_ciphertext: [u8; ENC_CIPHERTEXT_SIZE],
+    pub out_ciphertext: [u8; OUT_CIPHERTEXT_SIZE],
     pub zkproof: [u8; GROTH_PROOF_SIZE],
 }
 
