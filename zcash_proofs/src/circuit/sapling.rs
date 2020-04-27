@@ -9,6 +9,7 @@ use zcash_primitives::jubjub::{FixedGenerators, JubjubEngine};
 use zcash_primitives::constants;
 
 use zcash_primitives::primitives::{PaymentAddress, ProofGenerationKey, ValueCommitment};
+use zcash_primitives::primitives::{AssetType};
 
 use super::ecc;
 use super::pedersen_hash;
@@ -55,6 +56,9 @@ pub struct Output<'a, E: JubjubEngine> {
     /// Pedersen commitment to the value being spent
     pub value_commitment: Option<ValueCommitment<E>>,
 
+    /// Asset Type (256 bit identifier)
+    pub asset_type: Vec<Option<bool>>,
+
     /// The payment address of the recipient
     pub payment_address: Option<PaymentAddress<E>>,
 
@@ -76,21 +80,21 @@ fn expose_value_commitment<E, CS>(
           CS: ConstraintSystem<E>
 {
     // Witness the asset type
-    let asset_type = ecc::EdwardsPoint::witness(
-        cs.namespace(|| "asset_type"),
-        value_commitment.as_ref().map(|c| c.asset_type.value_commitment_generator(params)),
+    let asset_generator = ecc::EdwardsPoint::witness(
+        cs.namespace(|| "asset_generator"),
+        value_commitment.as_ref().map(|vc| vc.asset_generator),
         params
     )?;
 
-    // Check that asset_type is not a small order point
-    asset_type.assert_not_small_order(
-        cs.namespace(|| "asset_type not small order"),
+    // Check that asset_generator is not a small order point
+    asset_generator.assert_not_small_order(
+        cs.namespace(|| "asset_generator not small order"),
         params
     )?;
 
     // Booleanize the asset type
-    let asset_type_bits = asset_type.repr(
-        cs.namespace(|| "unpack asset_type")
+    let asset_generator_bits = asset_generator.repr(
+        cs.namespace(|| "unpack asset_generator")
     )?;
 
     // Booleanize the value into little-endian bit order
@@ -100,7 +104,7 @@ fn expose_value_commitment<E, CS>(
     )?;
 
     // Compute the note value in the exponent
-    let value = asset_type.mul(
+    let value = asset_generator.mul(
         cs.namespace(|| "compute the value in the exponent"),
         &value_bits,
         params,
@@ -128,7 +132,7 @@ fn expose_value_commitment<E, CS>(
     // Expose the commitment as an input to the circuit
     cv.inputize(cs.namespace(|| "commitment point"))?;
 
-    Ok((asset_type_bits, value_bits))
+    Ok((asset_generator_bits, value_bits))
 }
 
 impl<'a, E: JubjubEngine> Circuit<E> for Spend<'a, E> {
@@ -242,7 +246,7 @@ impl<'a, E: JubjubEngine> Circuit<E> for Spend<'a, E> {
         let pk_d = g_d.mul(cs.namespace(|| "compute pk_d"), &ivk, self.params)?;
 
         // Compute note contents:
-        // asset_type || value || g_d || pk_d
+        // asset_generator || value || g_d || pk_d
         let mut note_contents = vec![];
 
         // Handle the value; we'll need it later for the
@@ -250,9 +254,9 @@ impl<'a, E: JubjubEngine> Circuit<E> for Spend<'a, E> {
         let mut value_num = num::Num::zero();
         {
             // Get the value in little-endian bit order
-            let (asset_type_bits, value_bits) = expose_value_commitment(
+            let (asset_generator_bits, value_bits) = expose_value_commitment(
                 cs.namespace(|| "value commitment"),
-                self.value_commitment,
+                self.value_commitment.as_ref().map(|vc| vc.clone()),
                 self.params,
             )?;
 
@@ -265,7 +269,7 @@ impl<'a, E: JubjubEngine> Circuit<E> for Spend<'a, E> {
             }
 
             // Place the asset type in the note
-            note_contents.extend(asset_type_bits);
+            note_contents.extend(asset_generator_bits);
 
             // Place the value in the note
             note_contents.extend(value_bits);
@@ -279,7 +283,7 @@ impl<'a, E: JubjubEngine> Circuit<E> for Spend<'a, E> {
 
         assert_eq!(
             note_contents.len(),
-            256 + // asset_type bits
+            256 + // asset_generator bits
             64 + // value bits
             256 + // g_d bits
             256 // p_d bits
@@ -433,20 +437,59 @@ impl<'a, E: JubjubEngine> Circuit<E> for Spend<'a, E> {
 impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
     fn synthesize<CS: ConstraintSystem<E>>(self, cs: &mut CS) -> Result<(), SynthesisError>
     {
+        use byteorder::{ByteOrder, LittleEndian};
+        use bellman::gadgets::uint32::UInt32;
+        use itertools::multizip;
         // Let's start to construct our note, which contains
         // value (big endian)
-        // asset_type || value || g_d || pk_d
+        // asset_generator || value || g_d || pk_d
         let mut note_contents = vec![];
 
+        let mut asset_generator_preimage = Vec::with_capacity(512);
+
+        // Add the constant to the input of the BLAKE2 hash
+        for gh_chunk in constants::GH_FIRST_BLOCK.chunks(4) {
+            // TODO: is LittleEndian correct to use here?
+            asset_generator_preimage.extend( UInt32::constant( LittleEndian::read_u32(&gh_chunk) ).into_bits() );
+        }
+
+        for bit in self.asset_type { 
+            let cs = &mut cs.namespace(|| ("witness asset type"));
+
+            let asset_type_bit = boolean::Boolean::from(boolean::AllocatedBit::alloc(
+                cs.namespace(|| "asset type bit"),
+                bit,
+            )?);
+
+            // Push this boolean for nullifier computation later
+            asset_generator_preimage.push(asset_type_bit.clone());
+        }
+
+        let asset_generator_image = blake2s::blake2s(
+            cs.namespace(|| "value base computation"),
+            &asset_generator_preimage,
+            constants::VALUE_COMMITMENT_GENERATOR_PERSONALIZATION,
+        )?;
+
         // Expose the value commitment
-        let (asset_type_bits, value_bits) = expose_value_commitment(
+        let (asset_generator_bits, value_bits) = expose_value_commitment(
             cs.namespace(|| "value commitment"),
             self.value_commitment,
             self.params
         )?;
 
+        // Check integrity of the asset generator
+        for (asset_generator_bit, asset_generator_image_bit) in 
+                multizip((&asset_generator_bits, &asset_generator_image)) {
+            boolean::Boolean::enforce_equal(
+                cs.namespace(|| "integrity of asset generator"),
+                asset_generator_bit, 
+                asset_generator_image_bit
+            );
+        }
+
         // Place the asset type in the note
-        note_contents.extend(asset_type_bits);
+        note_contents.extend(asset_generator_bits);
 
         // Place the value in the note
         note_contents.extend(value_bits);
@@ -515,7 +558,7 @@ impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
 
         assert_eq!(
             note_contents.len(),
-            256 + // asset_type
+            256 + // asset_generator_bits
             64 + // value
             256 + // g_d
             256 // pk_d
@@ -572,7 +615,7 @@ fn test_input_circuit_with_bls12_381() {
     use zcash_primitives::{
         jubjub::{edwards, fs, JubjubBls12},
         pedersen_hash,
-        primitives::{AssetType, Diversifier, Note, ProofGenerationKey},
+        primitives::{AssetTypeOld, Diversifier, Note, ProofGenerationKey},
     };
 
     let params = &JubjubBls12::new();
@@ -585,7 +628,7 @@ fn test_input_circuit_with_bls12_381() {
 
     for _ in 0..10 {
         let value_commitment = ValueCommitment {
-            asset_type: AssetType::Zcash,
+            asset_type: AssetTypeOld::Zcash,
             value: rng.next_u64(),
             randomness: fs::Fs::random(rng),
         };
@@ -808,7 +851,7 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
                 Fr::from_str(&expected_cm_ys[i as usize]).unwrap()
             );
             let note = Note {
-                asset_type: AssetType::Zcash,
+                asset_type: AssetTypeOld::Zcash,
                 value: value_commitment.value,
                 g_d: g_d.clone(),
                 pk_d: payment_address.pk_d().clone(),
@@ -907,7 +950,7 @@ fn test_output_circuit_with_bls12_381() {
     use rand_xorshift::XorShiftRng;
     use zcash_primitives::{
         jubjub::{JubjubBls12, fs, edwards},
-        primitives::{AssetType, Diversifier, ProofGenerationKey},
+        primitives::{AssetTypeOld, Diversifier, ProofGenerationKey},
     };
 
     let params = &JubjubBls12::new();
@@ -918,7 +961,7 @@ fn test_output_circuit_with_bls12_381() {
 
     for _ in 0..100 {
         let value_commitment = ValueCommitment {
-            asset_type: AssetType::Zcash,
+            asset_type: AssetTypeOld::Zcash,
             value: rng.next_u64(),
             randomness: fs::Fs::random(rng),
         };

@@ -16,32 +16,53 @@ use crate::jubjub::{edwards, FixedGenerators, JubjubEngine, JubjubParams, PrimeO
 use blake2s_simd::Params as Blake2sParams;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum AssetType {
+pub enum AssetTypeOld {
     Zcash,
     Str4dBucks,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct AssetType(pub [u8; 32]); //32 byte asset type preimage
+
 impl AssetType {
-    pub fn from_note_plaintext(id: u32) -> Option<AssetType> {
+    pub fn value_commitment_generator<E: JubjubEngine>(
+        &self,
+        params: &E::Params,
+    ) -> edwards::Point<E, PrimeOrder> {
+        let gh = group_hash::<E>(
+            &self.0,
+            constants::VALUE_COMMITMENT_GENERATOR_PERSONALIZATION,
+            params,
+        );
+        if let Some(gh) = gh {
+            return gh;
+        }
+        //TODO: group hash failed. Invalid asset type.
+        return edwards::Point::zero();
+    }
+}
+
+impl AssetTypeOld {
+    pub fn from_note_plaintext(id: u32) -> Option<AssetTypeOld> {
         match id {
-            0 => Some(AssetType::Zcash),
-            1337 => Some(AssetType::Str4dBucks),
+            0 => Some(AssetTypeOld::Zcash),
+            1337 => Some(AssetTypeOld::Str4dBucks),
             _ => None,
         }
     }
 
     pub fn to_note_plaintext(&self) -> u32 {
         match *self {
-            AssetType::Zcash => 0,
-            AssetType::Str4dBucks => 1337,
+            AssetTypeOld::Zcash => 0,
+            AssetTypeOld::Str4dBucks => 1337,
         }
     }
 
     /// Returns the tag for this asset type.
     fn tag(&self) -> &[u8] {
         match *self {
-            AssetType::Zcash => b"v",
-            AssetType::Str4dBucks => b"str4dBucks",
+            AssetTypeOld::Zcash => b"v",
+            AssetTypeOld::Str4dBucks => b"str4dBucks",
         }
     }
 
@@ -63,7 +84,7 @@ impl AssetType {
 
 #[derive(Clone)]
 pub struct ValueCommitment<E: JubjubEngine> {
-    pub asset_type: AssetType,
+    pub asset_generator: edwards::Point<E, PrimeOrder>,
     pub value: u64,
     pub randomness: E::Fs,
 }
@@ -74,8 +95,7 @@ impl<E: JubjubEngine> ValueCommitment<E> {
         params: &E::Params
     ) -> edwards::Point<E, PrimeOrder>
     {
-        self.asset_type.value_commitment_generator(params)
-              .mul(self.value, params)
+        self.asset_generator.mul(self.value, params)
               .add(
                   &params.generator(FixedGenerators::ValueCommitmentRandomness)
                   .mul(self.randomness, params),
@@ -256,7 +276,7 @@ impl<E: JubjubEngine> PaymentAddress<E> {
 
     pub fn create_note(
         &self,
-        asset_type: AssetType,
+        asset_type: AssetTypeOld,
         value: u64,
         randomness: E::Fs,
         params: &E::Params
@@ -277,7 +297,7 @@ impl<E: JubjubEngine> PaymentAddress<E> {
 #[derive(Clone, Debug)]
 pub struct Note<E: JubjubEngine> {
     /// The asset type that the note represents
-    pub asset_type: AssetType,
+    pub asset_type: AssetTypeOld,
     /// The value of the note
     pub value: u64,
     /// The diversified base of the address, GH(d)
@@ -331,7 +351,7 @@ impl<E: JubjubEngine> Note<E> {
         self.pk_d.write(&mut note_contents).unwrap();
 
         assert_eq!(note_contents.len(), 
-            32 + // asset_type bytes
+            32 + // asset_generator bytes
             32 + // g_d bytes 
             32 + // p_d bytes
             8 // value bytes
