@@ -3,7 +3,7 @@
 use crate::zip32::ExtendedSpendingKey;
 use crate::{
     jubjub::fs::Fs,
-    primitives::{AssetType, Diversifier, Note, PaymentAddress},
+    primitives::{AssetTypeOld, Diversifier, Note, PaymentAddress},
 };
 use ff::Field;
 use pairing::bls12_381::{Bls12, Fr};
@@ -82,7 +82,7 @@ impl SaplingOutput {
         let rcm = Fs::random(rng);
 
         let note = Note {
-            asset_type: AssetType::Zcash,
+            asset_type: AssetTypeOld::Zcash,
             g_d,
             pk_d: to.pk_d().clone(),
             value: value.into(),
@@ -589,7 +589,7 @@ impl<R: RngCore + CryptoRng> Builder<R> {
                     (
                         payment_address,
                         Note {
-                            asset_type: AssetType::Zcash,
+                            asset_type: AssetTypeOld::Zcash,
                             g_d,
                             pk_d,
                             r: Fs::random(&mut self.rng),
@@ -675,7 +675,7 @@ mod tests {
         consensus,
         legacy::TransparentAddress,
         merkle_tree::{CommitmentTree, IncrementalWitness},
-        primitives::AssetType,
+        primitives::AssetTypeOld,
         prover::mock::MockTxProver,
         sapling::Node,
         transaction::components::Amount,
@@ -765,7 +765,7 @@ mod tests {
         }
 
         let note1 = to
-            .create_note(AssetType::Zcash, 59999, Fs::random(&mut rng), &JUBJUB)
+            .create_note(AssetTypeOld::Zcash, 59999, Fs::random(&mut rng), &JUBJUB)
             .unwrap();
         let cm1 = Node::new(note1.cm(&JUBJUB).into_repr());
         let mut tree = CommitmentTree::new();
@@ -805,7 +805,7 @@ mod tests {
         }
 
         let note2 = to
-            .create_note(AssetType::Zcash, 1, Fs::random(&mut rng), &JUBJUB)
+            .create_note(AssetTypeOld::Zcash, 1, Fs::random(&mut rng), &JUBJUB)
             .unwrap();
         let cm2 = Node::new(note2.cm(&JUBJUB).into_repr());
         tree.append(cm2).unwrap();

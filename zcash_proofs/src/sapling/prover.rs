@@ -7,7 +7,7 @@ use pairing::bls12_381::{Bls12, Fr};
 use rand_core::OsRng;
 use zcash_primitives::{
     jubjub::{edwards, fs::Fs, FixedGenerators, JubjubBls12, Unknown},
-    primitives::{AssetType, Diversifier, Note, PaymentAddress, ProofGenerationKey, ValueCommitment},
+    primitives::{AssetTypeOld, Diversifier, Note, PaymentAddress, ProofGenerationKey, ValueCommitment},
 };
 use zcash_primitives::{
     merkle_tree::MerklePath,
@@ -44,7 +44,7 @@ impl SaplingProvingContext {
         diversifier: Diversifier,
         rcm: Fs,
         ar: Fs,
-        asset_type: AssetType,
+        asset_type: AssetTypeOld,
         value: u64,
         anchor: Fr,
         merkle_path: MerklePath<Node>,
@@ -76,7 +76,7 @@ impl SaplingProvingContext {
 
         // Construct the value commitment
         let value_commitment = ValueCommitment::<Bls12> {
-            asset_type,
+            asset_generator: asset_type,
             value: value,
             randomness: rcv,
         };
@@ -98,7 +98,7 @@ impl SaplingProvingContext {
 
         // Let's compute the nullifier while we have the position
         let note = Note {
-            asset_type,
+            asset_generator: asset_type,
             value: value,
             g_d: diversifier
                 .g_d::<Bls12>(params)
@@ -189,7 +189,7 @@ impl SaplingProvingContext {
         esk: Fs,
         payment_address: PaymentAddress<Bls12>,
         rcm: Fs,
-        asset_type: AssetType,
+        asset_type: AssetTypeOld,
         value: u64,
         proving_key: &Parameters<Bls12>,
         params: &JubjubBls12,
@@ -214,7 +214,7 @@ impl SaplingProvingContext {
 
         // Construct the value commitment for the proof instance
         let value_commitment = ValueCommitment::<Bls12> {
-            asset_type,
+            asset_generator: asset_type,
             value: value,
             randomness: rcv,
         };
@@ -252,7 +252,7 @@ impl SaplingProvingContext {
     /// and output_proof() must be completed before calling this function.
     pub fn binding_sig(
         &self,
-        asset_type: AssetType,
+        asset_type: AssetTypeOld,
         value_balance: Amount,
         sighash: &[u8; 32],
         params: &JubjubBls12,
