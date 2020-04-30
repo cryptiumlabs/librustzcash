@@ -460,13 +460,13 @@ impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
         for bit in self.asset_type { 
             let cs = &mut cs.namespace(|| ("witness asset type"));
 
-            let asset_type_bit = boolean::Boolean::from(boolean::AllocatedBit::alloc(
+            let asset_type_preimage_bit = boolean::Boolean::from(boolean::AllocatedBit::alloc(
                 cs.namespace(|| "asset type bit"),
                 bit,
             )?);
 
             // Push this boolean for nullifier computation later
-            asset_generator_preimage.push(asset_type_bit.clone());
+            asset_generator_preimage.push(asset_type_preimage_bit.clone());
         }
 
         let asset_generator_image = blake2s::blake2s(
@@ -491,6 +491,8 @@ impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
                 asset_generator_image_bit
             );
         }
+        // TODO: verify that edwards::Point::<E, _>::read and ecc::EdwardsPoint
+        // are always strict "inverse" 
 
         // Place the asset type in the note
         note_contents.extend(asset_generator_bits);
@@ -632,7 +634,7 @@ fn test_input_circuit_with_bls12_381() {
 
     for _ in 0..10 {
         let value_commitment = ValueCommitment {
-            asset_type: AssetTypeOld::Zcash,
+            asset_type: [b'z'; 32], // garbage test asset type 
             value: rng.next_u64(),
             randomness: fs::Fs::random(rng),
         };
