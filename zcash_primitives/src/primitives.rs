@@ -29,16 +29,29 @@ impl AssetType {
         &self,
         params: &E::Params,
     ) -> edwards::Point<E, PrimeOrder> {
-        let gh = group_hash::<E>(
-            &self.0,
-            constants::VALUE_COMMITMENT_GENERATOR_PERSONALIZATION,
-            params,
-        );
-        if let Some(gh) = gh {
-            return gh;
+        assert_eq!(constants::VALUE_COMMITMENT_GENERATOR_PERSONALIZATION.len(), 8);
+
+        // Check to see that scalar field is 255 bits
+        assert!(E::Fr::NUM_BITS == 255);
+    
+        let h = Params::new()
+            .hash_length(32)
+            .personal(constants::VALUE_COMMITMENT_GENERATOR_PERSONALIZATION)
+            .to_state()
+            .update(constants::GH_FIRST_BLOCK)
+            .update(tag)
+            .finalize();
+    
+        match edwards::Point::<E, _>::read(h.as_ref(), params) {
+            Ok(p) => {
+                if p.mul_by_cofactor(params) != edwards::Point::zero() {
+                    Some(p)
+                } else {
+                    None //TODO: group hash failed. Invalid asset type.
+                }
+            }
+            Err(_) => None,
         }
-        //TODO: group hash failed. Invalid asset type.
-        return edwards::Point::zero();
     }
 }
 
