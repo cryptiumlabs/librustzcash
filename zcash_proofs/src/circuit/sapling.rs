@@ -86,11 +86,15 @@ fn expose_value_commitment<E, CS>(
         params
     )?;
 
-    // Check that asset_generator is not a small order point
-    asset_generator.assert_not_small_order(
-        cs.namespace(|| "asset_generator not small order"),
-        params
-    )?;
+    let asset_generator = asset_generator.double(cs.namespace(|| "asset_generator first doubling"), params)?;
+    let asset_generator = asset_generator.double(cs.namespace(|| "asset_generator second doubling"), params)?;
+    let asset_generator = asset_generator.double(cs.namespace(|| "asset_generator third doubling"), params)?;
+
+    // (0, -1) is a small order point, but won't ever appear here
+    // because cofactor is 2^3, and we performed three doublings.
+    // (0, 1) is the neutral element, so checking if x is nonzero
+    // is sufficient to prevent small order points here.
+    asset_generator.x.assert_nonzero(cs.namespace(|| "check asset_generator != 0"))?;
 
     // Booleanize the asset type
     let asset_generator_bits = asset_generator.repr(
