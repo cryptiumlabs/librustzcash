@@ -86,6 +86,11 @@ fn expose_value_commitment<E, CS>(
         params
     )?;
 
+    // Booleanize the asset type
+    let asset_generator_bits = asset_generator.repr(
+        cs.namespace(|| "unpack asset_generator")
+    )?;
+
     let asset_generator = asset_generator.double(cs.namespace(|| "asset_generator first doubling"), params)?;
     let asset_generator = asset_generator.double(cs.namespace(|| "asset_generator second doubling"), params)?;
     let asset_generator = asset_generator.double(cs.namespace(|| "asset_generator third doubling"), params)?;
@@ -95,11 +100,6 @@ fn expose_value_commitment<E, CS>(
     // (0, 1) is the neutral element, so checking if x is nonzero
     // is sufficient to prevent small order points here.
     asset_generator.x.assert_nonzero(cs.namespace(|| "check asset_generator != 0"))?;
-
-    // Booleanize the asset type
-    let asset_generator_bits = asset_generator.repr(
-        cs.namespace(|| "unpack asset_generator")
-    )?;
 
     // Booleanize the value into little-endian bit order
     let value_bits = boolean::u64_into_boolean_vec_le(
