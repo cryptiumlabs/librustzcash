@@ -28,7 +28,7 @@ pub const SPENDING_KEY_GENERATOR_PERSONALIZATION: &[u8; 8] = b"Zcash_G_";
 pub const PROOF_GENERATION_KEY_BASE_GENERATOR_PERSONALIZATION: &[u8; 8] = b"Zcash_H_";
 
 /// BLAKE2s Personalization for the value commitment generator for the value
-pub const VALUE_COMMITMENT_GENERATOR_PERSONALIZATION: &[u8; 8] = b"Zcash_cv";
+pub const VALUE_COMMITMENT_GENERATOR_PERSONALIZATION: &[u8; 8] = b"tzMASP_v";
 
 /// BLAKE2s Personalization for the nullifier position generator (for computing rho)
 pub const NULLIFIER_POSITION_IN_TREE_GENERATOR_PERSONALIZATION: &[u8; 8] = b"Zcash_J_";

@@ -297,7 +297,7 @@ impl<E: JubjubEngine> PaymentAddress<E> {
 #[derive(Clone, Debug)]
 pub struct Note<E: JubjubEngine> {
     /// The asset type that the note represents
-    pub asset_type: AssetTypeOld,
+    pub asset_type: AssetType,
     /// The value of the note
     pub value: u64,
     /// The diversified base of the address, GH(d)

@@ -621,7 +621,7 @@ fn test_input_circuit_with_bls12_381() {
     use zcash_primitives::{
         jubjub::{edwards, fs, JubjubBls12},
         pedersen_hash,
-        primitives::{AssetTypeOld, Diversifier, Note, ProofGenerationKey},
+        primitives::{AssetType, Diversifier, Note, ProofGenerationKey},
     };
 
     let params = &JubjubBls12::new();
@@ -632,9 +632,12 @@ fn test_input_circuit_with_bls12_381() {
 
     let tree_depth = 32;
 
+    let asset_type = AssetType([b'z' ; 31]), // garbage test asset type
+    let asset_generator = asset_type.value_commitment_generator(params);
+
     for _ in 0..10 {
         let value_commitment = ValueCommitment {
-            asset_type: [b'z'; 32], // garbage test asset type 
+            asset_generator: asset_generator,  
             value: rng.next_u64(),
             randomness: fs::Fs::random(rng),
         };
@@ -673,6 +676,7 @@ fn test_input_circuit_with_bls12_381() {
             let rk = viewing_key.rk(ar, params).to_xy();
             let expected_value_cm = value_commitment.cm(params).to_xy();
             let note = Note {
+                asset_type : asset_type,
                 value: value_commitment.value,
                 g_d: g_d.clone(),
                 pk_d: payment_address.pk_d().clone(),
