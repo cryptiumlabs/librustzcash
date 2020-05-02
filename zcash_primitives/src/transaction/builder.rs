@@ -3,7 +3,7 @@
 use crate::zip32::ExtendedSpendingKey;
 use crate::{
     jubjub::fs::Fs,
-    primitives::{AssetTypeOld, Diversifier, Note, PaymentAddress},
+    primitives::{Diversifier, Note, PaymentAddress},
 };
 use ff::Field;
 use pairing::bls12_381::{Bls12, Fr};
@@ -23,6 +23,7 @@ use crate::{
         signature_hash_data, Transaction, TransactionData, SIGHASH_ALL,
     },
     JUBJUB,
+    constants,
 };
 
 #[cfg(feature = "transparent-inputs")]
@@ -82,7 +83,7 @@ impl SaplingOutput {
         let rcm = Fs::random(rng);
 
         let note = Note {
-            asset_type: AssetTypeOld::Zcash,
+            asset_type: constants::ASSET_TYPE_DEFAULT,
             g_d,
             pk_d: to.pk_d().clone(),
             value: value.into(),
@@ -589,7 +590,7 @@ impl<R: RngCore + CryptoRng> Builder<R> {
                     (
                         payment_address,
                         Note {
-                            asset_type: AssetTypeOld::Zcash,
+                            asset_type: constants::ASSET_TYPE_DEFAULT,
                             g_d,
                             pk_d,
                             r: Fs::random(&mut self.rng),
@@ -606,8 +607,9 @@ impl<R: RngCore + CryptoRng> Builder<R> {
 
                 let cmu = dummy_note.cm(&JUBJUB);
 
-                let mut enc_ciphertext = [0u8; 584];
-                let mut out_ciphertext = [0u8; 80];
+                use crate::note_encryption::{ENC_CIPHERTEXT_SIZE, OUT_CIPHERTEXT_SIZE};
+                let mut enc_ciphertext = [0u8; ENC_CIPHERTEXT_SIZE];
+                let mut out_ciphertext = [0u8; OUT_CIPHERTEXT_SIZE];
                 self.rng.fill_bytes(&mut enc_ciphertext[..]);
                 self.rng.fill_bytes(&mut out_ciphertext[..]);
 
@@ -675,7 +677,6 @@ mod tests {
         consensus,
         legacy::TransparentAddress,
         merkle_tree::{CommitmentTree, IncrementalWitness},
-        primitives::AssetTypeOld,
         prover::mock::MockTxProver,
         sapling::Node,
         transaction::components::Amount,
@@ -711,6 +712,7 @@ mod tests {
 
     #[test]
     fn fails_on_negative_change() {
+        use crate::constants;
         let mut rng = OsRng;
 
         // Just use the master key as the ExtendedSpendingKey for this test
@@ -765,7 +767,7 @@ mod tests {
         }
 
         let note1 = to
-            .create_note(AssetTypeOld::Zcash, 59999, Fs::random(&mut rng), &JUBJUB)
+            .create_note(constants::ASSET_TYPE_DEFAULT, 59999, Fs::random(&mut rng), &JUBJUB)
             .unwrap();
         let cm1 = Node::new(note1.cm(&JUBJUB).into_repr());
         let mut tree = CommitmentTree::new();
@@ -805,7 +807,7 @@ mod tests {
         }
 
         let note2 = to
-            .create_note(AssetTypeOld::Zcash, 1, Fs::random(&mut rng), &JUBJUB)
+            .create_note(constants::ASSET_TYPE_DEFAULT, 1, Fs::random(&mut rng), &JUBJUB)
             .unwrap();
         let cm2 = Node::new(note2.cm(&JUBJUB).into_repr());
         tree.append(cm2).unwrap();

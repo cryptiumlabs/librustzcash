@@ -229,8 +229,8 @@ impl OutputDescription {
         // - "Not small order" is enforced in SaplingVerificationContext::check_output()
         let ephemeral_key = edwards::Point::<Bls12, Unknown>::read(&mut reader, &JUBJUB)?;
 
-        let mut enc_ciphertext = [0; 584];
-        let mut out_ciphertext = [0; 80];
+        let mut enc_ciphertext = [0; ENC_CIPHERTEXT_SIZE];
+        let mut out_ciphertext = [0; OUT_CIPHERTEXT_SIZE];
         reader.read_exact(&mut enc_ciphertext)?;
         reader.read_exact(&mut out_ciphertext)?;
 

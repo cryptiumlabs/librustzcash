@@ -6,7 +6,7 @@ use crate::{
         fs::{Fs, FsRepr},
         PrimeOrder, ToUniform, Unknown,
     },
-    primitives::{AssetTypeOld, Diversifier, Note, PaymentAddress},
+    primitives::{AssetType, Diversifier, Note, PaymentAddress},
 };
 use blake2b_simd::{Hash as Blake2bHash, Params as Blake2bParams};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -27,20 +27,18 @@ const TYPELESS_NOTE_SIZE: usize = ( // in bytes
     1  + // version
     11 + // diversifier
     8  + // value
-    32
-    // rcv
+    32 // rcv
 );
 
 const TYPED_NOTE_SIZE: usize = ( // in bytes
     TYPELESS_NOTE_SIZE + // original Sapling note size COMPACT_NOTE_SIZE
-    4 // asset_type
+    32 // asset_type 32 byte string
 );
 
 const NOTE_PLAINTEXT_SIZE: usize = TYPED_NOTE_SIZE + 512;
 const OUT_PLAINTEXT_SIZE: usize = (
     32 + // pk_d
-    32
-    // esk
+    32 // esk
 );
 pub const ENC_CIPHERTEXT_SIZE: usize = NOTE_PLAINTEXT_SIZE + 16;
 pub const OUT_CIPHERTEXT_SIZE: usize = OUT_PLAINTEXT_SIZE + 16;
@@ -316,7 +314,7 @@ impl SaplingNoteEncryption {
             .write_le(&mut input[20..TYPELESS_NOTE_SIZE])
             .unwrap();
         input[TYPELESS_NOTE_SIZE..TYPED_NOTE_SIZE]
-            .copy_from_slice(&self.note.asset_type.to_note_plaintext().to_le_bytes());
+            .copy_from_slice(&self.note.asset_type.0);
         input[TYPED_NOTE_SIZE..NOTE_PLAINTEXT_SIZE].copy_from_slice(&self.memo.0);
 
         let mut output = [0u8; ENC_CIPHERTEXT_SIZE];
@@ -383,10 +381,10 @@ fn parse_note_plaintext_without_memo(
         .mul(ivk.into_repr(), &JUBJUB);
 
     let asset_type = {
-        let mut tmp = [0; 4];
+        let mut tmp = [0b0; 32];
         tmp.copy_from_slice(&plaintext[TYPELESS_NOTE_SIZE..TYPED_NOTE_SIZE]);
-        AssetTypeOld::from_note_plaintext(u32::from_le_bytes(tmp))
-    }?;
+        AssetType(tmp)
+    };
 
     //let to = PaymentAddress { pk_d, diversifier };
     //TODO: was different in master branch:
@@ -538,10 +536,10 @@ pub fn try_sapling_output_recovery(
     let rcm = Fs::from_repr(rcm).ok()?;
 
     let asset_type = {
-        let mut tmp = [0; 4];
+        let mut tmp = [0b0; 32];
         tmp.copy_from_slice(&plaintext[TYPELESS_NOTE_SIZE..TYPED_NOTE_SIZE]);
-        AssetTypeOld::from_note_plaintext(u32::from_le_bytes(tmp))
-    }?;
+        AssetType(tmp)
+    };
 
     let mut memo = [0u8; 512];
     memo.copy_from_slice(&plaintext[TYPED_NOTE_SIZE..NOTE_PLAINTEXT_SIZE]);
@@ -576,7 +574,7 @@ mod tests {
             fs::{Fs, FsRepr},
             PrimeOrder, Unknown,
         },
-        primitives::{AssetTypeOld, Diversifier, PaymentAddress, ValueCommitment},
+        primitives::{Diversifier, PaymentAddress, ValueCommitment},
     };
     use crypto_api_chachapoly::ChachaPolyIetf;
     use ff::{Field, PrimeField, PrimeFieldRepr};
@@ -758,6 +756,7 @@ mod tests {
         [u8; ENC_CIPHERTEXT_SIZE],
         [u8; OUT_CIPHERTEXT_SIZE],
     ) {
+        use crate::constants::ASSET_TYPE_DEFAULT;
         let diversifier = Diversifier([0; 11]);
         let pk_d = diversifier.g_d::<Bls12>(&JUBJUB).unwrap().mul(ivk, &JUBJUB);
         let pa = PaymentAddress::from_parts_unchecked(diversifier, pk_d);
@@ -765,14 +764,14 @@ mod tests {
         // Construct the value commitment for the proof instance
         let value = 100;
         let value_commitment = ValueCommitment::<Bls12> {
-            asset_type: AssetTypeOld::Zcash,
+            asset_generator: ASSET_TYPE_DEFAULT.value_commitment_generator,
             value,
             randomness: Fs::random(&mut rng),
         };
         let cv = value_commitment.cm(&JUBJUB).into();
 
         let note = pa
-            .create_note(AssetTypeOld::Zcash, value, Fs::random(&mut rng), &JUBJUB)
+            .create_note(ASSET_TYPE_DEFAULT, value, Fs::random(&mut rng), &JUBJUB)
             .unwrap();
         let cmu = note.cm(&JUBJUB);
 
@@ -1314,6 +1313,7 @@ mod tests {
 
     #[test]
     fn test_vectors() {
+        use crate::constants::ASSET_TYPE_DEFAULT;
         let test_vectors = crate::test_vectors::note_encryption::make_test_vectors();
 
         macro_rules! read_fr {
@@ -1379,7 +1379,7 @@ mod tests {
             //};
             //TODO: was different in master
             let to = PaymentAddress::from_parts(Diversifier(tv.default_d), pk_d).unwrap();
-            let note = to.create_note(AssetTypeOld::Zcash, tv.v, rcm, &JUBJUB).unwrap();
+            let note = to.create_note(ASSET_TYPE_DEFAULT, tv.v, rcm, &JUBJUB).unwrap();
             assert_eq!(note.cm(&JUBJUB), cmu);
 
             //
