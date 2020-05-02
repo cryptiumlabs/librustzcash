@@ -764,7 +764,7 @@ mod tests {
         // Construct the value commitment for the proof instance
         let value = 100;
         let value_commitment = ValueCommitment::<Bls12> {
-            asset_generator: ASSET_TYPE_DEFAULT.value_commitment_generator,
+            asset_generator: ASSET_TYPE_DEFAULT.value_commitment_generator(&JUBJUB),
             value,
             randomness: Fs::random(&mut rng),
         };

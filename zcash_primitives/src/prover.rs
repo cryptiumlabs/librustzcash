@@ -2,7 +2,7 @@
 
 use crate::{
     jubjub::{edwards, fs::Fs, Unknown},
-    primitives::{Diversifier, PaymentAddress, ProofGenerationKey},
+    primitives::{AssetType, Diversifier, PaymentAddress, ProofGenerationKey},
 };
 use pairing::bls12_381::{Bls12, Fr};
 
@@ -36,6 +36,7 @@ pub trait TxProver {
         value: u64,
         anchor: Fr,
         merkle_path: MerklePath<Node>,
+        asset_type: AssetType,
     ) -> Result<
         (
             [u8; GROTH_PROOF_SIZE],
@@ -57,6 +58,7 @@ pub trait TxProver {
         payment_address: PaymentAddress<Bls12>,
         rcm: Fs,
         value: u64,
+        generator: AssetType,
     ) -> ([u8; GROTH_PROOF_SIZE], edwards::Point<Bls12, Unknown>);
 
     /// Create the `bindingSig` for a Sapling transaction. All calls to
@@ -77,8 +79,8 @@ pub(crate) mod mock {
     use rand_core::OsRng;
 
     use crate::{
-        jubjub::{edwards, fs::Fs, FixedGenerators, Unknown},
-        primitives::{Diversifier, PaymentAddress, ProofGenerationKey, ValueCommitment},
+        jubjub::{PrimeOrder, JubjubBls12, edwards, fs::Fs, FixedGenerators, Unknown},
+        primitives::{AssetType, Diversifier, PaymentAddress, ProofGenerationKey, ValueCommitment},
         constants::ASSET_TYPE_DEFAULT,
     };
 
@@ -110,6 +112,7 @@ pub(crate) mod mock {
             value: u64,
             _anchor: Fr,
             _merkle_path: MerklePath<Node>,
+            asset_type: AssetType,
         ) -> Result<
             (
                 [u8; GROTH_PROOF_SIZE],
@@ -121,7 +124,7 @@ pub(crate) mod mock {
             let mut rng = OsRng;
 
             let cv = ValueCommitment::<Bls12> {
-                asset_generator: ASSET_TYPE_DEFAULT,
+                asset_generator: asset_type.value_commitment_generator(&JUBJUB),
                 value,
                 randomness: Fs::random(&mut rng),
             }
@@ -144,11 +147,12 @@ pub(crate) mod mock {
             _payment_address: PaymentAddress<Bls12>,
             _rcm: Fs,
             value: u64,
+            asset_type: AssetType,
         ) -> ([u8; GROTH_PROOF_SIZE], edwards::Point<Bls12, Unknown>) {
             let mut rng = OsRng;
 
             let cv = ValueCommitment::<Bls12> {
-                asset_generator: ASSET_TYPE_DEFAULT.value_commitment_generator(params: &E::Params),
+                asset_generator: asset_type.value_commitment_generator(&JUBJUB)?,
                 value,
                 randomness: Fs::random(&mut rng),
             }

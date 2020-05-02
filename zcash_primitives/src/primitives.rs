@@ -11,7 +11,7 @@ use crate::pedersen_hash::{pedersen_hash, Personalization};
 
 use byteorder::{LittleEndian, WriteBytesExt};
 
-use crate::jubjub::{edwards, FixedGenerators, JubjubEngine, JubjubParams, PrimeOrder};
+use crate::jubjub::{edwards, FixedGenerators, JubjubEngine, JubjubParams, PrimeOrder, Unknown};
 
 use blake2s_simd::Params as Blake2sParams;
 
@@ -28,15 +28,12 @@ impl AssetType {
     pub fn value_commitment_generator<E: JubjubEngine>(
         &self,
         params: &E::Params,
-    ) -> edwards::Point<E, PrimeOrder> {
+    ) -> Option<edwards::Point<E, Unknown>> {
         use blake2s_simd::Params;
         assert_eq!(constants::VALUE_COMMITMENT_GENERATOR_PERSONALIZATION.len(), 8);
 
         // Check to see that scalar field is 255 bits
         assert!(E::Fr::NUM_BITS == 255);
- 
-        //let mut tag = self.to_vec();
-        //tag.push(0u8);
 
         let h = Params::new()
             .hash_length(32)
@@ -101,7 +98,7 @@ impl AssetTypeOld {
 
 #[derive(Clone)]
 pub struct ValueCommitment<E: JubjubEngine> {
-    pub asset_generator: edwards::Point<E, PrimeOrder>,
+    pub asset_generator: edwards::Point<E, Unknown>,
     pub value: u64,
     pub randomness: E::Fs,
 }
@@ -112,7 +109,7 @@ impl<E: JubjubEngine> ValueCommitment<E> {
         params: &E::Params
     ) -> edwards::Point<E, PrimeOrder>
     {
-        self.asset_generator.mul(self.value, params)
+        self.asset_generator.mul_by_cofactor(params).mul(self.value, params)
               .add(
                   &params.generator(FixedGenerators::ValueCommitmentRandomness)
                   .mul(self.randomness, params),
@@ -351,9 +348,10 @@ impl<E: JubjubEngine> Note<E> {
         let mut note_contents = vec![];
 
         // Write the asset type
-        self.asset_type
-            .value_commitment_generator::<E>(params)
-            .write(&mut note_contents)
+        let vcg = self.asset_type
+            .value_commitment_generator::<E>(params)?;
+
+        vcg.write(&mut note_contents)
             .unwrap();
 
         // Writing the value in little endian
