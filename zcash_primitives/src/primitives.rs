@@ -22,13 +22,13 @@ pub enum AssetTypeOld {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct AssetType(pub [u8; 32]); //32 byte asset type preimage
+pub struct AssetType(pub [u8; constants::ASSET_TYPE_LENGTH]); //32 byte asset type preimage
 
 impl AssetType {
     pub fn value_commitment_generator<E: JubjubEngine>(
         &self,
         params: &E::Params,
-    ) -> Option<edwards::Point<E, Unknown>> {
+    ) -> edwards::Point<E, Unknown> {
         use blake2s_simd::Params;
         assert_eq!(constants::VALUE_COMMITMENT_GENERATOR_PERSONALIZATION.len(), 8);
 
@@ -46,14 +46,35 @@ impl AssetType {
         match edwards::Point::<E, _>::read(h.as_ref(), params) {
             Ok(p) => {
                 if p.mul_by_cofactor(params) != edwards::Point::zero() {
-                    Some(p)
+                    p
                 } else {
-                    None //TODO: group hash failed. Invalid asset type.
+                    edwards::Point::zero() //TODO: group hash failed. Invalid asset type.
                 }
             }
-            Err(_) => None,
+            Err(_) => edwards::Point::zero(),
         }
     }
+    pub fn to_bits(&self) -> Vec<Option<bool>> {
+        self.0
+            .iter()
+            .flat_map(|&v| (0..8).map(move |i| Some((v >> i) & 1 == 1)))
+            .collect()
+    }    
+    /*    let mut bits = Vec::with_capacity(constants::ASSET_TYPE_LENGTH*8);
+
+        for byte in self {
+            let mut tmp = byte;
+            for _ in 0..8 {
+                if tmp & 1 == 1 {
+                    bits.push(Some(Boolean::constant(true)))
+                } else {
+                    bits.push(Some(Boolean::constant(false)))
+                }
+                tmp >>= 1;
+            }
+        }
+        bits
+    }*/
 }
 
 impl AssetTypeOld {
@@ -348,11 +369,8 @@ impl<E: JubjubEngine> Note<E> {
         let mut note_contents = vec![];
 
         // Write the asset type
-        match self.asset_type
-            .value_commitment_generator::<E>(params) {
-                Some(vcg) => vcg,
-                None => edwards::Point::zero(),
-            }
+        self.asset_type
+            .value_commitment_generator::<E>(params)
             .write(&mut note_contents)
             .unwrap();
 

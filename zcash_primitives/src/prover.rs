@@ -69,6 +69,7 @@ pub trait TxProver {
         ctx: &mut Self::SaplingProvingContext,
         value_balance: Amount,
         sighash: &[u8; 32],
+        asset_type: AssetType,
     ) -> Result<Signature, ()>;
 }
 
@@ -167,6 +168,7 @@ pub(crate) mod mock {
             _ctx: &mut Self::SaplingProvingContext,
             _value_balance: Amount,
             _sighash: &[u8; 32],
+            _asset_type : AssetType,
         ) -> Result<Signature, ()> {
             Err(())
         }

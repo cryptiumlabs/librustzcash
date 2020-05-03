@@ -652,7 +652,7 @@ impl<R: RngCore + CryptoRng> Builder<R> {
         }
         self.mtx.binding_sig = Some(
             prover
-                .binding_sig(&mut ctx, self.mtx.value_balance, &sighash)
+                .binding_sig(&mut ctx, self.mtx.value_balance, &sighash, constants::ASSET_TYPE_DEFAULT)
                 .map_err(|()| Error::BindingSig)?,
         );
 

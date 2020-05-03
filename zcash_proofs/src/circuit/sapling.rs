@@ -82,7 +82,7 @@ fn expose_value_commitment<E, CS>(
     // Witness the asset type
     let asset_generator = ecc::EdwardsPoint::witness(
         cs.namespace(|| "asset_generator"),
-        value_commitment.as_ref().map(|vc| vc.asset_generator),
+        value_commitment.as_ref().map(|vc| vc.asset_generator.clone()),
         params
     )?;
 
@@ -453,7 +453,6 @@ impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
 
         // Add the constant to the input of the BLAKE2 hash
         for gh_chunk in constants::GH_FIRST_BLOCK.chunks(4) {
-            // TODO: is LittleEndian correct to use here?
             asset_generator_preimage.extend( UInt32::constant( LittleEndian::read_u32(&gh_chunk) ).into_bits() );
         }
 
