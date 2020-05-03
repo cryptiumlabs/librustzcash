@@ -348,10 +348,12 @@ impl<E: JubjubEngine> Note<E> {
         let mut note_contents = vec![];
 
         // Write the asset type
-        let vcg = self.asset_type
-            .value_commitment_generator::<E>(params)?;
-
-        vcg.write(&mut note_contents)
+        match self.asset_type
+            .value_commitment_generator::<E>(params) {
+                Some(vcg) => vcg,
+                None => edwards::Point::zero(),
+            }
+            .write(&mut note_contents)
             .unwrap();
 
         // Writing the value in little endian

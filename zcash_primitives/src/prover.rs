@@ -124,7 +124,7 @@ pub(crate) mod mock {
             let mut rng = OsRng;
 
             let cv = ValueCommitment::<Bls12> {
-                asset_generator: asset_type.value_commitment_generator(&JUBJUB),
+                asset_generator: asset_type.value_commitment_generator(&JUBJUB)?,
                 value,
                 randomness: Fs::random(&mut rng),
             }

@@ -99,7 +99,7 @@ fn expose_value_commitment<E, CS>(
     // because cofactor is 2^3, and we performed three doublings.
     // (0, 1) is the neutral element, so checking if x is nonzero
     // is sufficient to prevent small order points here.
-    asset_generator.x.assert_nonzero(cs.namespace(|| "check asset_generator != 0"))?;
+    asset_generator.get_x().assert_nonzero(cs.namespace(|| "check asset_generator != 0"))?;
 
     // Booleanize the value into little-endian bit order
     let value_bits = boolean::u64_into_boolean_vec_le(
@@ -632,7 +632,7 @@ fn test_input_circuit_with_bls12_381() {
 
     let tree_depth = 32;
 
-    let asset_type = AssetType([b'z' ; 31]), // garbage test asset type
+    let asset_type = AssetType([b'z' ; 32]); // garbage test asset type
     let asset_generator = asset_type.value_commitment_generator(params);
 
     for _ in 0..10 {
