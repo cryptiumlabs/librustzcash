@@ -1,15 +1,15 @@
 extern crate bellman;
 extern crate pairing;
-extern crate rand_os;
 extern crate zcash_primitives;
 extern crate zcash_proofs;
 
 use bellman::groth16::generate_random_parameters;
 use pairing::bls12_381::Bls12;
-use rand_os::OsRng;
+use rand_core::OsRng;
 use std::fs::File;
 use zcash_primitives::JUBJUB;
 use zcash_proofs::circuit::sapling::{Output, Spend, TREE_DEPTH};
+use zcash_primitives::constants;
 
 fn main() {
     let mut rng = OsRng;
@@ -38,6 +38,7 @@ fn main() {
             payment_address: None,
             commitment_randomness: None,
             esk: None,
+            asset_type: vec![None; constants::ASSET_TYPE_LENGTH*8],
         },
         &mut rng,
     )

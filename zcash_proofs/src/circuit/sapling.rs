@@ -636,7 +636,7 @@ fn test_input_circuit_with_bls12_381() {
 
     for _ in 0..10 {
         let value_commitment = ValueCommitment {
-            asset_generator: asset_generator,  
+            asset_generator: asset_generator.clone(),  
             value: rng.next_u64(),
             randomness: fs::Fs::random(rng),
         };
@@ -776,6 +776,7 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
         jubjub::{edwards, fs, JubjubBls12},
         pedersen_hash,
         primitives::{Diversifier, Note, ProofGenerationKey},
+        constants::ASSET_TYPE_DEFAULT,
     };
 
     let params = &JubjubBls12::new();
@@ -812,8 +813,11 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
         "32959334601512756708397683646222389414681003290313255304927423560477040775488",
     ];
 
+    let asset_type = constants::ASSET_TYPE_DEFAULT;
+
     for i in 0..10 {
         let value_commitment = ValueCommitment {
+            asset_generator: asset_type.value_commitment_generator(params),
             value: i,
             randomness: fs::Fs::from_str(&(1000 * (i + 1)).to_string()).unwrap(),
         };
@@ -860,7 +864,7 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
                 Fr::from_str(&expected_cm_ys[i as usize]).unwrap()
             );
             let note = Note {
-                asset_type: AssetTypeOld::Zcash,
+                asset_type: asset_type,
                 value: value_commitment.value,
                 g_d: g_d.clone(),
                 pk_d: payment_address.pk_d().clone(),
@@ -959,7 +963,8 @@ fn test_output_circuit_with_bls12_381() {
     use rand_xorshift::XorShiftRng;
     use zcash_primitives::{
         jubjub::{JubjubBls12, fs, edwards},
-        primitives::{AssetTypeOld, Diversifier, ProofGenerationKey},
+        primitives::{AssetType, Diversifier, ProofGenerationKey},
+        constants::ASSET_TYPE_DEFAULT,
     };
 
     let params = &JubjubBls12::new();
@@ -970,7 +975,7 @@ fn test_output_circuit_with_bls12_381() {
 
     for _ in 0..100 {
         let value_commitment = ValueCommitment {
-            asset_type: AssetTypeOld::Zcash,
+            asset_generator: constants::ASSET_TYPE_DEFAULT.value_commitment_generator(params),
             value: rng.next_u64(),
             randomness: fs::Fs::random(rng),
         };
@@ -1012,6 +1017,7 @@ fn test_output_circuit_with_bls12_381() {
                 payment_address: Some(payment_address.clone()),
                 commitment_randomness: Some(commitment_randomness),
                 esk: Some(esk.clone()),
+                asset_type: constants::ASSET_TYPE_DEFAULT.to_bits(),
             };
 
             instance.synthesize(&mut cs).unwrap();
@@ -1024,7 +1030,7 @@ fn test_output_circuit_with_bls12_381() {
             );
 
             let expected_cm = payment_address.create_note(
-                value_commitment.asset_type,
+                constants::ASSET_TYPE_DEFAULT,
                 value_commitment.value,
                 commitment_randomness,
                 params
