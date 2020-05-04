@@ -631,7 +631,7 @@ fn test_input_circuit_with_bls12_381() {
 
     let tree_depth = 32;
 
-    let asset_type = AssetType([b'z' ; 32]); // garbage test asset type
+    let asset_type = constants::ASSET_TYPE_DEFAULT;
     let asset_generator = asset_type.value_commitment_generator(params);
 
     for _ in 0..10 {
