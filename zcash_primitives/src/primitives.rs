@@ -15,12 +15,6 @@ use crate::jubjub::{edwards, FixedGenerators, JubjubEngine, JubjubParams, PrimeO
 
 use blake2s_simd::Params as Blake2sParams;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum AssetTypeOld {
-    Zcash,
-    Str4dBucks,
-}
-
 #[derive(Clone, Debug)]
 pub struct AssetType<E: JubjubEngine> {
     identifier: [u8; constants::ASSET_TYPE_LENGTH], //32 byte asset type preimage
@@ -90,46 +84,6 @@ impl<E: JubjubEngine> AssetType<E> {
 impl<E: JubjubEngine> PartialEq for AssetType<E> {
     fn eq(&self, other: &Self) -> bool {
         self.get_identifier() == other.get_identifier() 
-    }
-}
-
-impl AssetTypeOld {
-    pub fn from_note_plaintext(id: u32) -> Option<AssetTypeOld> {
-        match id {
-            0 => Some(AssetTypeOld::Zcash),
-            1337 => Some(AssetTypeOld::Str4dBucks),
-            _ => None,
-        }
-    }
-
-    pub fn to_note_plaintext(&self) -> u32 {
-        match *self {
-            AssetTypeOld::Zcash => 0,
-            AssetTypeOld::Str4dBucks => 1337,
-        }
-    }
-
-    /// Returns the tag for this asset type.
-    fn tag(&self) -> &[u8] {
-        match *self {
-            AssetTypeOld::Zcash => b"v",
-            AssetTypeOld::Str4dBucks => b"str4dBucks",
-        }
-    }
-
-    /// Returns the value commitment generator for this asset type.
-    ///
-    /// The generator is the canonical representation of the asset type within the
-    /// consensus rules.
-    pub fn value_commitment_generator<E: JubjubEngine>(
-        &self,
-        params: &E::Params,
-    ) -> edwards::Point<E, PrimeOrder> {
-        find_group_hash::<E>(
-            self.tag(),
-            constants::VALUE_COMMITMENT_GENERATOR_PERSONALIZATION,
-            params,
-        )
     }
 }
 
