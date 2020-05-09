@@ -30,7 +30,7 @@ use rand_xorshift::XorShiftRng;
 use std::time::{Duration, Instant};
 use zcash_primitives::jubjub::{edwards, fs, JubjubBls12};
 use zcash_primitives::primitives::{AssetType, Diversifier, ProofGenerationKey, ValueCommitment};
-use zcash_primitives::constants;
+use zcash_primitives::ASSET_TYPE_DEFAULT;
 use zcash_proofs::circuit::sapling::Spend;
 
 const TREE_DEPTH: usize = 32;
@@ -60,12 +60,12 @@ fn main() {
 
     const SAMPLES: u32 = 50;
 
-    let asset_type = constants::ASSET_TYPE_DEFAULT;
+    let asset_type = ASSET_TYPE_DEFAULT.clone();
 
     let mut total_time = Duration::new(0, 0);
     for _ in 0..SAMPLES {
         let value_commitment = ValueCommitment {
-            asset_generator: asset_type.value_commitment_generator(jubjub_params),
+            asset_generator: asset_type.value_commitment_generator(),
             value: 1,
             randomness: fs::Fs::random(rng),
         };

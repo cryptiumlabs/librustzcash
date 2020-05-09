@@ -36,7 +36,7 @@ pub trait TxProver {
         value: u64,
         anchor: Fr,
         merkle_path: MerklePath<Node>,
-        asset_type: AssetType,
+        asset_type: AssetType<Bls12>,
     ) -> Result<
         (
             [u8; GROTH_PROOF_SIZE],
@@ -58,7 +58,7 @@ pub trait TxProver {
         payment_address: PaymentAddress<Bls12>,
         rcm: Fs,
         value: u64,
-        generator: AssetType,
+        generator: AssetType<Bls12>,
     ) -> ([u8; GROTH_PROOF_SIZE], edwards::Point<Bls12, Unknown>);
 
     /// Create the `bindingSig` for a Sapling transaction. All calls to
@@ -69,7 +69,7 @@ pub trait TxProver {
         ctx: &mut Self::SaplingProvingContext,
         value_balance: Amount,
         sighash: &[u8; 32],
-        asset_type: AssetType,
+        asset_type: AssetType<Bls12>,
     ) -> Result<Signature, ()>;
 }
 
@@ -82,7 +82,6 @@ pub(crate) mod mock {
     use crate::{
         jubjub::{PrimeOrder, JubjubBls12, edwards, fs::Fs, FixedGenerators, Unknown},
         primitives::{AssetType, Diversifier, PaymentAddress, ProofGenerationKey, ValueCommitment},
-        constants::ASSET_TYPE_DEFAULT,
     };
 
     use crate::{
@@ -113,7 +112,7 @@ pub(crate) mod mock {
             value: u64,
             _anchor: Fr,
             _merkle_path: MerklePath<Node>,
-            asset_type: AssetType,
+            asset_type: AssetType<Bls12>,
         ) -> Result<
             (
                 [u8; GROTH_PROOF_SIZE],
@@ -125,7 +124,7 @@ pub(crate) mod mock {
             let mut rng = OsRng;
 
             let cv = ValueCommitment::<Bls12> {
-                asset_generator: asset_type.value_commitment_generator::<Bls12>(&JUBJUB),
+                asset_generator: asset_type.value_commitment_generator(),
                 value,
                 randomness: Fs::random(&mut rng),
             }
@@ -148,12 +147,12 @@ pub(crate) mod mock {
             _payment_address: PaymentAddress<Bls12>,
             _rcm: Fs,
             value: u64,
-            asset_type: AssetType,
+            asset_type: AssetType<Bls12>,
         ) -> ([u8; GROTH_PROOF_SIZE], edwards::Point<Bls12, Unknown>) {
             let mut rng = OsRng;
 
             let cv = ValueCommitment::<Bls12> {
-                asset_generator: asset_type.value_commitment_generator::<Bls12>(&JUBJUB),
+                asset_generator: asset_type.value_commitment_generator(),
                 value,
                 randomness: Fs::random(&mut rng),
             }
@@ -168,7 +167,7 @@ pub(crate) mod mock {
             _ctx: &mut Self::SaplingProvingContext,
             _value_balance: Amount,
             _sighash: &[u8; 32],
-            _asset_type : AssetType,
+            _asset_type : AssetType<Bls12>,
         ) -> Result<Signature, ()> {
             Err(())
         }

@@ -6,7 +6,7 @@ use bellman::{Circuit, ConstraintSystem, SynthesisError};
 
 use zcash_primitives::jubjub::{FixedGenerators, JubjubEngine};
 
-use zcash_primitives::constants;
+use zcash_primitives::{ASSET_TYPE_DEFAULT, constants};
 
 use zcash_primitives::primitives::{PaymentAddress, ProofGenerationKey, ValueCommitment};
 use zcash_primitives::primitives::{AssetType};
@@ -631,12 +631,11 @@ fn test_input_circuit_with_bls12_381() {
 
     let tree_depth = 32;
 
-    let asset_type = constants::ASSET_TYPE_DEFAULT;
-    let asset_generator = asset_type.value_commitment_generator(params);
+    let asset_type = ASSET_TYPE_DEFAULT.clone();
 
     for _ in 0..10 {
         let value_commitment = ValueCommitment {
-            asset_generator: asset_generator.clone(),  
+            asset_generator: asset_type.value_commitment_generator(),  
             value: rng.next_u64(),
             randomness: fs::Fs::random(rng),
         };
@@ -675,7 +674,7 @@ fn test_input_circuit_with_bls12_381() {
             let rk = viewing_key.rk(ar, params).to_xy();
             let expected_value_cm = value_commitment.cm(params).to_xy();
             let note = Note {
-                asset_type : asset_type,
+                asset_type : asset_type.clone(),
                 value: value_commitment.value,
                 g_d: g_d.clone(),
                 pk_d: payment_address.pk_d().clone(),
@@ -776,7 +775,7 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
         jubjub::{edwards, fs, JubjubBls12},
         pedersen_hash,
         primitives::{Diversifier, Note, ProofGenerationKey},
-        constants::ASSET_TYPE_DEFAULT,
+        ASSET_TYPE_DEFAULT,
     };
 
     let params = &JubjubBls12::new();
@@ -813,11 +812,11 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
         "32959334601512756708397683646222389414681003290313255304927423560477040775488",
     ];
 
-    let asset_type = constants::ASSET_TYPE_DEFAULT;
+    let asset_type = ASSET_TYPE_DEFAULT.clone();
 
     for i in 0..10 {
         let value_commitment = ValueCommitment {
-            asset_generator: asset_type.value_commitment_generator(params),
+            asset_generator: asset_type.value_commitment_generator(),
             value: i,
             randomness: fs::Fs::from_str(&(1000 * (i + 1)).to_string()).unwrap(),
         };
@@ -864,7 +863,7 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
                 Fr::from_str(&expected_cm_ys[i as usize]).unwrap()
             );
             let note = Note {
-                asset_type: asset_type,
+                asset_type: asset_type.clone(),
                 value: value_commitment.value,
                 g_d: g_d.clone(),
                 pk_d: payment_address.pk_d().clone(),
@@ -964,7 +963,7 @@ fn test_output_circuit_with_bls12_381() {
     use zcash_primitives::{
         jubjub::{JubjubBls12, fs, edwards},
         primitives::{AssetType, Diversifier, ProofGenerationKey},
-        constants::ASSET_TYPE_DEFAULT,
+        ASSET_TYPE_DEFAULT,
     };
 
     let params = &JubjubBls12::new();
@@ -975,7 +974,7 @@ fn test_output_circuit_with_bls12_381() {
 
     for _ in 0..100 {
         let value_commitment = ValueCommitment {
-            asset_generator: constants::ASSET_TYPE_DEFAULT.value_commitment_generator(params),
+            asset_generator: ASSET_TYPE_DEFAULT.value_commitment_generator(),
             value: rng.next_u64(),
             randomness: fs::Fs::random(rng),
         };
@@ -1017,7 +1016,7 @@ fn test_output_circuit_with_bls12_381() {
                 payment_address: Some(payment_address.clone()),
                 commitment_randomness: Some(commitment_randomness),
                 esk: Some(esk.clone()),
-                asset_type: constants::ASSET_TYPE_DEFAULT.to_bits(),
+                asset_type: ASSET_TYPE_DEFAULT.to_bits(),
             };
 
             instance.synthesize(&mut cs).unwrap();
@@ -1030,7 +1029,7 @@ fn test_output_circuit_with_bls12_381() {
             );
 
             let expected_cm = payment_address.create_note(
-                constants::ASSET_TYPE_DEFAULT,
+                ASSET_TYPE_DEFAULT.clone(),
                 value_commitment.value,
                 commitment_randomness,
                 params

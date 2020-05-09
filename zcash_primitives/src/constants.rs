@@ -33,6 +33,5 @@ pub const VALUE_COMMITMENT_GENERATOR_PERSONALIZATION: &[u8; 8] = b"tzMASP_v";
 /// BLAKE2s Personalization for the nullifier position generator (for computing rho)
 pub const NULLIFIER_POSITION_IN_TREE_GENERATOR_PERSONALIZATION: &[u8; 8] = b"Zcash_J_";
 
-use crate::primitives::{AssetType};
-pub const ASSET_TYPE_DEFAULT: AssetType = AssetType(*b"zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz");
 pub const ASSET_TYPE_LENGTH : usize = 32;
+pub const ASSET_TYPE_PERSONALIZATION: &[u8; 8] = b"tzMASP_t";

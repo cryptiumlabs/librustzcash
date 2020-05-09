@@ -31,7 +31,11 @@ pub mod zip32;
 mod test_vectors;
 
 use crate::jubjub::JubjubBls12;
+use crate::primitives::AssetType;
+use pairing::bls12_381::Bls12;
 
 lazy_static! {
     pub static ref JUBJUB: JubjubBls12 = { JubjubBls12::new() };
+
+    pub static ref ASSET_TYPE_DEFAULT: AssetType<Bls12> = AssetType::<Bls12>::new(b"zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz", &JUBJUB);
 }

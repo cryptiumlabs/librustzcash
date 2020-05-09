@@ -23,7 +23,7 @@ use crate::{
         signature_hash_data, Transaction, TransactionData, SIGHASH_ALL,
     },
     JUBJUB,
-    constants,
+    ASSET_TYPE_DEFAULT,
 };
 
 #[cfg(feature = "transparent-inputs")]
@@ -83,7 +83,7 @@ impl SaplingOutput {
         let rcm = Fs::random(rng);
 
         let note = Note {
-            asset_type: constants::ASSET_TYPE_DEFAULT,
+            asset_type: ASSET_TYPE_DEFAULT.clone(),
             g_d,
             pk_d: to.pk_d().clone(),
             value: value.into(),
@@ -118,10 +118,10 @@ impl SaplingOutput {
             self.to,
             self.note.r,
             self.note.value,
-            self.note.asset_type,
+            self.note.asset_type.clone(),
         );
 
-        let cmu = self.note.cm(&JUBJUB);
+        let cmu = self.note.cm(&JUBJUB).clone();
 
         let enc_ciphertext = encryptor.encrypt_note_plaintext();
         let out_ciphertext = encryptor.encrypt_outgoing_plaintext(&cv, &cmu);
@@ -538,7 +538,7 @@ impl<R: RngCore + CryptoRng> Builder<R> {
                         spend.note.value,
                         anchor,
                         spend.merkle_path.clone(),
-                        spend.note.asset_type,
+                        spend.note.asset_type.clone(),
                     )
                     .map_err(|()| Error::SpendProof)?;
 
@@ -592,7 +592,7 @@ impl<R: RngCore + CryptoRng> Builder<R> {
                     (
                         payment_address,
                         Note {
-                            asset_type: constants::ASSET_TYPE_DEFAULT,
+                            asset_type: ASSET_TYPE_DEFAULT.clone(),
                             g_d,
                             pk_d,
                             r: Fs::random(&mut self.rng),
@@ -605,7 +605,7 @@ impl<R: RngCore + CryptoRng> Builder<R> {
                 let epk = dummy_note.g_d.mul(esk, &JUBJUB);
 
                 let (zkproof, cv) =
-                    prover.output_proof(&mut ctx, esk, dummy_to, dummy_note.r, dummy_note.value, dummy_note.asset_type);
+                    prover.output_proof(&mut ctx, esk, dummy_to, dummy_note.r, dummy_note.value, dummy_note.asset_type.clone());
 
                 let cmu = dummy_note.cm(&JUBJUB);
 
@@ -652,7 +652,7 @@ impl<R: RngCore + CryptoRng> Builder<R> {
         }
         self.mtx.binding_sig = Some(
             prover
-                .binding_sig(&mut ctx, self.mtx.value_balance, &sighash, constants::ASSET_TYPE_DEFAULT)
+                .binding_sig(&mut ctx, self.mtx.value_balance, &sighash, ASSET_TYPE_DEFAULT.clone())
                 .map_err(|()| Error::BindingSig)?,
         );
 
@@ -684,6 +684,7 @@ mod tests {
         transaction::components::Amount,
         zip32::{ExtendedFullViewingKey, ExtendedSpendingKey},
         JUBJUB,
+        ASSET_TYPE_DEFAULT,
     };
 
     #[test]
@@ -769,7 +770,7 @@ mod tests {
         }
 
         let note1 = to
-            .create_note(constants::ASSET_TYPE_DEFAULT, 59999, Fs::random(&mut rng), &JUBJUB)
+            .create_note(ASSET_TYPE_DEFAULT.clone(), 59999, Fs::random(&mut rng), &JUBJUB)
             .unwrap();
         let cm1 = Node::new(note1.cm(&JUBJUB).into_repr());
         let mut tree = CommitmentTree::new();
@@ -809,7 +810,7 @@ mod tests {
         }
 
         let note2 = to
-            .create_note(constants::ASSET_TYPE_DEFAULT, 1, Fs::random(&mut rng), &JUBJUB)
+            .create_note(ASSET_TYPE_DEFAULT.clone(), 1, Fs::random(&mut rng), &JUBJUB)
             .unwrap();
         let cm2 = Node::new(note2.cm(&JUBJUB).into_repr());
         tree.append(cm2).unwrap();

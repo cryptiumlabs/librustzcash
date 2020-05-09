@@ -174,7 +174,7 @@ impl SaplingVerificationContext {
     /// have been checked before calling this function.
     pub fn final_check(
         &self,
-        asset_type: AssetType,
+        asset_type: AssetType<Bls12>,
         value_balance: Amount,
         sighash_value: &[u8; 32],
         binding_sig: Signature,

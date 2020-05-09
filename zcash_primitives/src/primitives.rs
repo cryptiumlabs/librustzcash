@@ -21,60 +21,76 @@ pub enum AssetTypeOld {
     Str4dBucks,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct AssetType(pub [u8; constants::ASSET_TYPE_LENGTH]); //32 byte asset type preimage
+#[derive(Clone, Debug)]
+pub struct AssetType<E: JubjubEngine> {
+    identifier: [u8; constants::ASSET_TYPE_LENGTH], //32 byte asset type preimage
+    generator: edwards::Point<E, Unknown>,
+}
 
-impl AssetType {
-    pub fn value_commitment_generator<E: JubjubEngine>(
-        &self,
+impl<E: JubjubEngine> AssetType<E> {
+    pub fn new(
+        name: &[u8], 
         params: &E::Params,
-    ) -> edwards::Point<E, Unknown> {
-        use blake2s_simd::Params;
+    ) -> AssetType::<E> {
+        assert_eq!(constants::ASSET_TYPE_PERSONALIZATION.len(), 8);
+        let mut blake2s_state = Blake2sParams::new()
+            .hash_length(constants::ASSET_TYPE_LENGTH)
+            .personal(constants::ASSET_TYPE_PERSONALIZATION)
+            .to_state();
+
+        blake2s_state.update(&name); 
+
+        loop {
+            let h = blake2s_state.finalize();
+            if let Some(p) = AssetType::<E>::hash_to_point(h.as_array(), params) {
+                break AssetType::<E>{ identifier: *h.as_array(), generator: p };
+            }
+            blake2s_state.update(h.as_ref());
+        }
+    }
+    fn hash_to_point(
+        name: &[u8; 32], 
+        params: &E::Params,
+    ) -> Option<edwards::Point<E, Unknown>> {
         assert_eq!(constants::VALUE_COMMITMENT_GENERATOR_PERSONALIZATION.len(), 8);
 
         // Check to see that scalar field is 255 bits
         assert!(E::Fr::NUM_BITS == 255);
 
-        let h = Params::new()
+        let h = Blake2sParams::new()
             .hash_length(32)
             .personal(constants::VALUE_COMMITMENT_GENERATOR_PERSONALIZATION)
             .to_state()
             .update(constants::GH_FIRST_BLOCK)
-            .update(&self.0)
+            .update(name)
             .finalize();
-    
-        match edwards::Point::<E, _>::read(h.as_ref(), params) {
-            Ok(p) => {
-                if p.mul_by_cofactor(params) != edwards::Point::zero() {
-                    p
-                } else {
-                    edwards::Point::zero() //TODO: group hash failed. Invalid asset type.
-                }
+ 
+        if let Ok(p) = edwards::Point::<E, _>::read(h.as_ref(), params) {
+            if p.mul_by_cofactor(params) != edwards::Point::zero() {
+                return Some(p);
             }
-            Err(_) => edwards::Point::zero(),
-        }
+        } 
+        return None;
+    }
+    pub fn get_identifier(&self) -> &[u8; constants::ASSET_TYPE_LENGTH] {
+        return &self.identifier;
+    }
+    pub fn value_commitment_generator(
+        &self,
+    ) -> edwards::Point<E, Unknown> {
+        self.generator.clone()
     }
     pub fn to_bits(&self) -> Vec<Option<bool>> {
-        self.0
+        self.get_identifier()
             .iter()
             .flat_map(|&v| (0..8).map(move |i| Some((v >> i) & 1 == 1)))
             .collect()
     }    
-    /*    let mut bits = Vec::with_capacity(constants::ASSET_TYPE_LENGTH*8);
-
-        for byte in self {
-            let mut tmp = byte;
-            for _ in 0..8 {
-                if tmp & 1 == 1 {
-                    bits.push(Some(Boolean::constant(true)))
-                } else {
-                    bits.push(Some(Boolean::constant(false)))
-                }
-                tmp >>= 1;
-            }
-        }
-        bits
-    }*/
+}
+impl<E: JubjubEngine> PartialEq for AssetType<E> {
+    fn eq(&self, other: &Self) -> bool {
+        self.get_identifier() == other.get_identifier() 
+    }
 }
 
 impl AssetTypeOld {
@@ -311,7 +327,7 @@ impl<E: JubjubEngine> PaymentAddress<E> {
 
     pub fn create_note(
         &self,
-        asset_type: AssetType,
+        asset_type: AssetType<E>,
         value: u64,
         randomness: E::Fs,
         params: &E::Params
@@ -332,7 +348,7 @@ impl<E: JubjubEngine> PaymentAddress<E> {
 #[derive(Clone, Debug)]
 pub struct Note<E: JubjubEngine> {
     /// The asset type that the note represents
-    pub asset_type: AssetType,
+    pub asset_type: AssetType<E>,
     /// The value of the note
     pub value: u64,
     /// The diversified base of the address, GH(d)
@@ -370,7 +386,7 @@ impl<E: JubjubEngine> Note<E> {
 
         // Write the asset type
         self.asset_type
-            .value_commitment_generator::<E>(params)
+            .value_commitment_generator()
             .write(&mut note_contents)
             .unwrap();
 
