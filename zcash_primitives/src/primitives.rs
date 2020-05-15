@@ -37,7 +37,7 @@ impl<E: JubjubEngine> AssetType<E> {
 
         loop {
             let h = blake2s_state.finalize();
-            if let Some(p) = AssetType::<E>::hash_to_point(h.as_array(), params) {
+            if AssetType::<E>::hash_to_point(h.as_array(), params).is_some() {
                 break AssetType::<E>{ identifier: *h.as_array(), _marker: PhantomData };
             }
             blake2s_state.update(h.as_ref());
