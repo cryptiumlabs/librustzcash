@@ -414,41 +414,26 @@ impl<E: JubjubEngine> Note<E> {
 
 #[test]
 fn test_value_commitment_generator() {
-    use crate::{JUBJUB, ASSET_TYPE_DEFAULT};
-    use pairing::bls12_381::{Fr, FrRepr};
-    //use crate::jubjub::FsRepr;
-    // x = 3790613555693612828818682379666141921367273985728786062989149673866758941597
-    // y = 38047597154758313335818136376762946319677624718662006883117362874901807918505)
+    use crate::{JUBJUB};
+    use pairing::bls12_381::{Bls12, Fr, FrRepr};
+
     let y_repr = FrRepr([
-        0xaa5be3a88cbe6da9, 
-        0xc0984861419d93fd, 
-        0x645df9720449ef94, 
-        0x541e2d45da62a4fd
-    ]);
+        0xfd89c65853c1bf5f, 
+        0x8986780cdeb85f8b, 
+        0x9b5f151ff1fb326b, 
+        0x303c93e08d71f5a5
+        ]);
 
-    let asset = ASSET_TYPE_DEFAULT.clone();
+    let asset = AssetType::<Bls12>::new(b"default", &JUBJUB);
     let p = asset.value_commitment_generator(&JUBJUB);
-    println!("{:?}", asset.get_identifier());
-
-    // [244, 69, 109, 192, 127, 68, 191, 17, 135, 229, 105, 236, 141, 18, 193, 29, 199, 205, 139, 99, 9, 198, 96, 154, 118, 8, 227, 188, 144, 55, 118, 237]
-    ///sage
-    // [169, 109, 190, 140, 168, 227, 91, 170, 253, 147, 157, 65, 97, 72, 152, 192, 148, 239, 73, 4, 114, 249, 93, 100, 253, 164, 98, 218, 69, 45, 30, 84]
 
     if let Ok(y) = Fr::from_repr(y_repr) {
         let xy = p.to_xy();
         let p_y = xy.1.into_repr();
-        println!("{}", p_y.as_ref()[0]);
-        println!("{}", p_y.as_ref()[1]);
-        println!("{}", p_y.as_ref()[2]);
-        println!("{}", p_y.as_ref()[3]);
 
-        //println!("{}", y);
         assert_eq!(xy.1, y);
     } else {
-        assert!(false);
+        panic!("AssetType identifier state invalid");
     }
-    //assert_eq!(p.1[1], y[1]);
-    //assert_eq!(p.1[2], y[2]);
-    //assert_eq!(p.1[3], y[3]);
 
 }
