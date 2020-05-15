@@ -635,7 +635,7 @@ fn test_input_circuit_with_bls12_381() {
 
     for _ in 0..10 {
         let value_commitment = ValueCommitment {
-            asset_generator: asset_type.value_commitment_generator(),  
+            asset_generator: asset_type.value_commitment_generator(params),  
             value: rng.next_u64(),
             randomness: fs::Fs::random(rng),
         };
@@ -816,7 +816,7 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
 
     for i in 0..10 {
         let value_commitment = ValueCommitment {
-            asset_generator: asset_type.value_commitment_generator(),
+            asset_generator: asset_type.value_commitment_generator(params),
             value: i,
             randomness: fs::Fs::from_str(&(1000 * (i + 1)).to_string()).unwrap(),
         };
@@ -974,7 +974,7 @@ fn test_output_circuit_with_bls12_381() {
 
     for _ in 0..100 {
         let value_commitment = ValueCommitment {
-            asset_generator: ASSET_TYPE_DEFAULT.value_commitment_generator(),
+            asset_generator: ASSET_TYPE_DEFAULT.value_commitment_generator(params),
             value: rng.next_u64(),
             randomness: fs::Fs::random(rng),
         };

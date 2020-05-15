@@ -14,11 +14,12 @@ use byteorder::{LittleEndian, WriteBytesExt};
 use crate::jubjub::{edwards, FixedGenerators, JubjubEngine, JubjubParams, PrimeOrder, Unknown};
 
 use blake2s_simd::Params as Blake2sParams;
+use std::marker::PhantomData;
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct AssetType<E: JubjubEngine> {
     identifier: [u8; constants::ASSET_TYPE_LENGTH], //32 byte asset type preimage
-    generator: edwards::Point<E, Unknown>,
+    _marker: PhantomData<E>,
 }
 
 impl<E: JubjubEngine> AssetType<E> {
@@ -37,7 +38,7 @@ impl<E: JubjubEngine> AssetType<E> {
         loop {
             let h = blake2s_state.finalize();
             if let Some(p) = AssetType::<E>::hash_to_point(h.as_array(), params) {
-                break AssetType::<E>{ identifier: *h.as_array(), generator: p };
+                break AssetType::<E>{ identifier: *h.as_array(), _marker: PhantomData };
             }
             blake2s_state.update(h.as_ref());
         }
@@ -67,12 +68,14 @@ impl<E: JubjubEngine> AssetType<E> {
         return None;
     }
     pub fn get_identifier(&self) -> &[u8; constants::ASSET_TYPE_LENGTH] {
-        return &self.identifier;
+        &self.identifier
     }
     pub fn value_commitment_generator(
         &self,
+        params: &E::Params,
     ) -> edwards::Point<E, Unknown> {
-        self.generator.clone()
+        AssetType::<E>::hash_to_point(self.get_identifier(), params)
+            .expect("AssetType internal identifier state inconsistent")
     }
     pub fn to_bits(&self) -> Vec<Option<bool>> {
         self.get_identifier()
@@ -340,7 +343,7 @@ impl<E: JubjubEngine> Note<E> {
 
         // Write the asset type
         self.asset_type
-            .value_commitment_generator()
+            .value_commitment_generator(params)
             .write(&mut note_contents)
             .unwrap();
 
@@ -424,7 +427,7 @@ fn test_value_commitment_generator() {
     ]);
 
     let asset = ASSET_TYPE_DEFAULT.clone();
-    let p = asset.value_commitment_generator();
+    let p = asset.value_commitment_generator(&JUBJUB);
     println!("{:?}", asset.get_identifier());
 
     // [244, 69, 109, 192, 127, 68, 191, 17, 135, 229, 105, 236, 141, 18, 193, 29, 199, 205, 139, 99, 9, 198, 96, 154, 118, 8, 227, 188, 144, 55, 118, 237]

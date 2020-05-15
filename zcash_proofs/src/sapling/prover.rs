@@ -76,7 +76,7 @@ impl SaplingProvingContext {
 
         // Construct the value commitment
         let value_commitment = ValueCommitment::<Bls12> {
-            asset_generator: asset_type.value_commitment_generator(),
+            asset_generator: asset_type.value_commitment_generator(params),
             value: value,
             randomness: rcv,
         };
@@ -214,7 +214,7 @@ impl SaplingProvingContext {
 
         // Construct the value commitment for the proof instance
         let value_commitment = ValueCommitment::<Bls12> {
-            asset_generator: asset_type.value_commitment_generator(),
+            asset_generator: asset_type.value_commitment_generator(params),
             value: value,
             randomness: rcv,
         };

@@ -33,7 +33,7 @@ fn compute_value_balance(
 
     // Compute it in the exponent
     let mut value_balance = asset_type
-        .value_commitment_generator()
+        .value_commitment_generator(params)
         .mul(FsRepr::from(abs), params);
 
     // Negate if necessary
