@@ -488,7 +488,7 @@ impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
                 cs.namespace(|| "integrity of asset generator"),
                 asset_generator_bit, 
                 asset_generator_image_bit
-            );
+            )?;
         }
         // TODO: verify that edwards::Point::<E, _>::read and ecc::EdwardsPoint
         // are always strict "inverse" 
