@@ -227,7 +227,7 @@ impl JubjubBls12 {
             let mut pedersen_hash_generators = vec![];
 
             for m in 0..6 {
-                use byteorder::{WriteBytesExt, LittleEndian}; //TODO: swapped between branches??
+                use byteorder::{LittleEndian, WriteBytesExt};
 
                 let mut segment_number = [0u8; 4];
                 (&mut segment_number[0..4])
