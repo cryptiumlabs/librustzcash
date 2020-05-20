@@ -32,8 +32,9 @@ impl<E: JubjubEngine> AssetType<E> {
             .personal(constants::ASSET_TYPE_PERSONALIZATION)
             .to_state();
 
-        blake2s_state.update(&name); 
-
+        blake2s_state.update(constants::GH_FIRST_BLOCK)
+            .update(&name);
+        
         loop {
             let h = blake2s_state.finalize();
             if AssetType::<E>::hash_to_point(h.as_array(), params).is_some() {
@@ -55,7 +56,6 @@ impl<E: JubjubEngine> AssetType<E> {
             .hash_length(32)
             .personal(constants::VALUE_COMMITMENT_GENERATOR_PERSONALIZATION)
             .to_state()
-            .update(constants::GH_FIRST_BLOCK)
             .update(name)
             .finalize();
  
@@ -416,23 +416,15 @@ fn test_value_commitment_generator() {
     use crate::{JUBJUB};
     use pairing::bls12_381::{Bls12, Fr, FrRepr};
 
-    let y_repr = FrRepr([
-        0xfd89c65853c1bf5f, 
-        0x8986780cdeb85f8b, 
-        0x9b5f151ff1fb326b, 
-        0x303c93e08d71f5a5
-        ]);
+    let y = Fr::from_repr(FrRepr([
+        0x60df5ed73f0d76f0, 
+        0x5c879f102de6ff9c, 
+        0xe147060d1b0352a, 
+        0x2fec7b1f2a0df2cb
+        ])).expect("Test case value generator invalid");
 
     let asset = AssetType::<Bls12>::new(b"default", &JUBJUB);
     let p = asset.value_commitment_generator(&JUBJUB);
 
-    if let Ok(y) = Fr::from_repr(y_repr) {
-        let xy = p.to_xy();
-        let p_y = xy.1.into_repr();
-
-        assert_eq!(xy.1, y);
-    } else {
-        panic!("AssetType identifier state invalid");
-    }
-
+    assert_eq!(p.to_xy().1, y);
 }

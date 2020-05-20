@@ -449,12 +449,7 @@ impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
         // asset_generator || value || g_d || pk_d
         let mut note_contents = vec![];
 
-        let mut asset_generator_preimage = Vec::with_capacity(512);
-
-        // Add the constant to the input of the BLAKE2 hash
-        for gh_chunk in constants::GH_FIRST_BLOCK.chunks(4) {
-            asset_generator_preimage.extend( UInt32::constant( LittleEndian::read_u32(&gh_chunk) ).into_bits() );
-        }
+        let mut asset_generator_preimage = Vec::with_capacity(256);
 
         for bit in self.asset_type { 
             let cs = &mut cs.namespace(|| ("witness asset type"));
