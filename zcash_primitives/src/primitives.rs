@@ -76,7 +76,7 @@ impl<E: JubjubEngine> AssetType<E> {
         AssetType::<E>::hash_to_point(self.get_identifier(), params)
             .expect("AssetType internal identifier state inconsistent")
     }
-    pub fn to_bits(&self) -> Vec<Option<bool>> {
+    pub fn identifier_bits(&self) -> Vec<Option<bool>> {
         self.get_identifier()
             .iter()
             .flat_map(|&v| (0..8).map(move |i| Some((v >> i) & 1 == 1)))

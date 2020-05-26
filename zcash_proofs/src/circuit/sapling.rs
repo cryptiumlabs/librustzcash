@@ -57,7 +57,7 @@ pub struct Output<'a, E: JubjubEngine> {
     pub value_commitment: Option<ValueCommitment<E>>,
 
     /// Asset Type (256 bit identifier)
-    pub asset_type: Vec<Option<bool>>,
+    pub asset_type_identifier: Vec<Option<bool>>,
 
     /// The payment address of the recipient
     pub payment_address: Option<PaymentAddress<E>>,
@@ -451,7 +451,7 @@ impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
 
         let mut asset_generator_preimage = Vec::with_capacity(256);
 
-        for (i, bit) in self.asset_type.iter().enumerate() { 
+        for (i, bit) in self.asset_type_identifier.iter().enumerate() { 
             let cs = &mut cs.namespace(|| format!("witness asset type bit {}", i));
 
             let asset_type_preimage_bit = boolean::Boolean::from(boolean::AllocatedBit::alloc(
@@ -861,7 +861,7 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
                 Fr::from_str(&expected_cm_ys[i as usize]).unwrap()
             );
             let note = Note {
-                asset_type: asset_type.clone(),
+                asset_type: asset_type,
                 value: value_commitment.value,
                 g_d: g_d.clone(),
                 pk_d: payment_address.pk_d().clone(),
@@ -970,12 +970,17 @@ fn test_output_circuit_with_bls12_381() {
         0xe5,
     ]);
 
-    for _ in 0..30 {
-        let value_commitment = ValueCommitment {
+    for i in 0..31 {
+        let mut value_commitment = ValueCommitment {
             asset_generator: ASSET_TYPE_DEFAULT.value_commitment_generator(params),
             value: rng.next_u64(),
             randomness: fs::Fs::random(rng),
         };
+        
+        if i == 30 {
+            value_commitment.asset_generator = ASSET_TYPE_DEFAULT.value_commitment_generator(params)
+                                                                 .negate();
+        }
 
         let nsk = fs::Fs::random(rng);
         let ak = edwards::Point::rand(rng, params).mul_by_cofactor(params);
@@ -1014,20 +1019,26 @@ fn test_output_circuit_with_bls12_381() {
                 payment_address: Some(payment_address.clone()),
                 commitment_randomness: Some(commitment_randomness),
                 esk: Some(esk.clone()),
-                asset_type: ASSET_TYPE_DEFAULT.to_bits(),
+                asset_type_identifier: ASSET_TYPE_DEFAULT.identifier_bits(),
             };
 
             instance.synthesize(&mut cs).unwrap();
 
-            assert!(cs.is_satisfied());
+            if i < 30 {
+                assert!(cs.is_satisfied());
+            } else {
+                assert!(!cs.is_satisfied());
+            }
             assert_eq!(cs.num_constraints(), 31205);
             assert_eq!(
                 cs.hash(),
                 "79dbf2dd7446caa7ccbeecc4de9a8f44bcb7fa8cca8c77606852b68f52376a01"
             );
 
+            let asset_type = ASSET_TYPE_DEFAULT.clone();
+
             let expected_cm = payment_address.create_note(
-                ASSET_TYPE_DEFAULT.clone(),
+                asset_type,
                 value_commitment.value,
                 commitment_randomness,
                 params
@@ -1053,7 +1064,9 @@ fn test_output_circuit_with_bls12_381() {
             );
             assert_eq!(cs.get_input(3, "epk/x/input variable"), expected_epk_xy.0);
             assert_eq!(cs.get_input(4, "epk/y/input variable"), expected_epk_xy.1);
-            assert_eq!(cs.get_input(5, "commitment/input variable"), expected_cm);
+            if i < 30 {
+                assert_eq!(cs.get_input(5, "commitment/input variable"), expected_cm);
+            }
         }
     }
 }
