@@ -451,12 +451,12 @@ impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
 
         let mut asset_generator_preimage = Vec::with_capacity(256);
 
-        for bit in self.asset_type { 
-            let cs = &mut cs.namespace(|| ("witness asset type"));
+        for (i, bit) in self.asset_type.iter().enumerate() { 
+            let cs = &mut cs.namespace(|| format!("witness asset type bit {}", i));
 
             let asset_type_preimage_bit = boolean::Boolean::from(boolean::AllocatedBit::alloc(
                 cs.namespace(|| "asset type bit"),
-                bit,
+                *bit,
             )?);
 
             // Push this boolean for nullifier computation later
@@ -476,11 +476,14 @@ impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
             self.params
         )?;
 
+        assert_eq!(256, asset_generator_bits.len());
+        assert_eq!(256, asset_generator_image.len());
+        
         // Check integrity of the asset generator
-        for (asset_generator_bit, asset_generator_image_bit) in 
-                multizip((&asset_generator_bits, &asset_generator_image)) {
+        for (i, asset_generator_bit, asset_generator_image_bit) in 
+                multizip((0..256, &asset_generator_bits, &asset_generator_image)) {
             boolean::Boolean::enforce_equal(
-                cs.namespace(|| "integrity of asset generator"),
+                cs.namespace(|| format!("integrity of asset generator bit {}", i)),
                 asset_generator_bit, 
                 asset_generator_image_bit
             )?;
@@ -967,7 +970,7 @@ fn test_output_circuit_with_bls12_381() {
         0xe5,
     ]);
 
-    for _ in 0..100 {
+    for _ in 0..30 {
         let value_commitment = ValueCommitment {
             asset_generator: ASSET_TYPE_DEFAULT.value_commitment_generator(params),
             value: rng.next_u64(),
@@ -1017,10 +1020,10 @@ fn test_output_circuit_with_bls12_381() {
             instance.synthesize(&mut cs).unwrap();
 
             assert!(cs.is_satisfied());
-            assert_eq!(cs.num_constraints(), 7827);
+            assert_eq!(cs.num_constraints(), 31205);
             assert_eq!(
                 cs.hash(),
-                "c26d5cdfe6ccd65c03390902c02e11393ea6bb96aae32a7f2ecb12eb9103faee"
+                "79dbf2dd7446caa7ccbeecc4de9a8f44bcb7fa8cca8c77606852b68f52376a01"
             );
 
             let expected_cm = payment_address.create_note(
