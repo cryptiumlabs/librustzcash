@@ -15,7 +15,7 @@ use crate::jubjub::{edwards, FixedGenerators, JubjubEngine, JubjubParams, PrimeO
 use blake2s_simd::Params as Blake2sParams;
 use std::marker::PhantomData;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug)]
 pub struct AssetType<E: JubjubEngine> {
     identifier: [u8; constants::ASSET_TYPE_LENGTH], //32 byte asset type preimage
     _marker: PhantomData<E>,
@@ -83,6 +83,18 @@ impl<E: JubjubEngine> AssetType<E> {
             .collect()
     }    
 }
+
+impl<E: JubjubEngine> Copy for AssetType<E> { }
+
+impl<E: JubjubEngine> Clone for AssetType<E> {
+    fn clone(&self) -> Self { 
+        AssetType::<E> {
+            identifier: self.identifier.clone(),
+            _marker: PhantomData,
+        }
+    }
+}
+
 impl<E: JubjubEngine> PartialEq for AssetType<E> {
     fn eq(&self, other: &Self) -> bool {
         self.get_identifier() == other.get_identifier() 
