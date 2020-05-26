@@ -669,7 +669,7 @@ fn test_input_circuit_with_bls12_381() {
             let rk = viewing_key.rk(ar, params).to_xy();
             let expected_value_cm = value_commitment.cm(params).to_xy();
             let note = Note {
-                asset_type : asset_type.clone(),
+                asset_type : asset_type,
                 value: value_commitment.value,
                 g_d: g_d.clone(),
                 pk_d: payment_address.pk_d().clone(),
@@ -732,10 +732,10 @@ fn test_input_circuit_with_bls12_381() {
             instance.synthesize(&mut cs).unwrap();
 
             assert!(cs.is_satisfied());
-            assert_eq!(cs.num_constraints(), 98777);
+            assert_eq!(cs.num_constraints(), 100637);
             assert_eq!(
                 cs.hash(),
-                "d37c738e83df5d9b0bb6495ac96abf21bcb2697477e2c15c2c7916ff7a3b6a89"
+                "4c55c62109c2fab9c1cf433e44fc2c85c3c05a1a04c9c4bd188ad660892ca3f4"
             );
 
             assert_eq!(cs.get("randomization of note commitment/x3/num"), cm);
@@ -921,10 +921,10 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
             instance.synthesize(&mut cs).unwrap();
 
             assert!(cs.is_satisfied());
-            assert_eq!(cs.num_constraints(), 98777);
+            assert_eq!(cs.num_constraints(), 100637);
             assert_eq!(
                 cs.hash(),
-                "d37c738e83df5d9b0bb6495ac96abf21bcb2697477e2c15c2c7916ff7a3b6a89"
+                "4c55c62109c2fab9c1cf433e44fc2c85c3c05a1a04c9c4bd188ad660892ca3f4"
             );
 
             assert_eq!(cs.get("randomization of note commitment/x3/num"), cm);
