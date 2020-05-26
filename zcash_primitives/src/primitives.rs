@@ -44,7 +44,7 @@ impl<E: JubjubEngine> AssetType<E> {
         }
     }
     fn hash_to_point(
-        name: &[u8; 32], 
+        identifier: &[u8; 32], 
         params: &E::Params,
     ) -> Option<edwards::Point<E, Unknown>> {
         assert_eq!(constants::VALUE_COMMITMENT_GENERATOR_PERSONALIZATION.len(), 8);
@@ -56,7 +56,7 @@ impl<E: JubjubEngine> AssetType<E> {
             .hash_length(32)
             .personal(constants::VALUE_COMMITMENT_GENERATOR_PERSONALIZATION)
             .to_state()
-            .update(name)
+            .update(identifier)
             .finalize();
  
         if let Ok(p) = edwards::Point::<E, _>::read(h.as_ref(), params) {
