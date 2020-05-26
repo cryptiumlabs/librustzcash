@@ -118,7 +118,7 @@ impl SaplingOutput {
             self.to,
             self.note.r,
             self.note.value,
-            self.note.asset_type.clone(),
+            self.note.asset_type,
         );
 
         let cmu = self.note.cm(&JUBJUB).clone();
@@ -538,7 +538,7 @@ impl<R: RngCore + CryptoRng> Builder<R> {
                         spend.note.value,
                         anchor,
                         spend.merkle_path.clone(),
-                        spend.note.asset_type.clone(),
+                        spend.note.asset_type,
                     )
                     .map_err(|()| Error::SpendProof)?;
 
@@ -605,7 +605,7 @@ impl<R: RngCore + CryptoRng> Builder<R> {
                 let epk = dummy_note.g_d.mul(esk, &JUBJUB);
 
                 let (zkproof, cv) =
-                    prover.output_proof(&mut ctx, esk, dummy_to, dummy_note.r, dummy_note.value, dummy_note.asset_type.clone());
+                    prover.output_proof(&mut ctx, esk, dummy_to, dummy_note.r, dummy_note.value, dummy_note.asset_type);
 
                 let cmu = dummy_note.cm(&JUBJUB);
 
