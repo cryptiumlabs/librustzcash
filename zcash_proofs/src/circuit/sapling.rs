@@ -615,7 +615,8 @@ fn test_input_circuit_with_bls12_381() {
     use zcash_primitives::{
         jubjub::{edwards, fs, JubjubBls12},
         pedersen_hash,
-        primitives::{AssetType, Diversifier, Note, ProofGenerationKey},
+        primitives::{Diversifier, Note, ProofGenerationKey},
+        ASSET_TYPE_DEFAULT,
     };
 
     let params = &JubjubBls12::new();
