@@ -6,10 +6,9 @@ use bellman::{Circuit, ConstraintSystem, SynthesisError};
 
 use zcash_primitives::jubjub::{FixedGenerators, JubjubEngine};
 
-use zcash_primitives::{ASSET_TYPE_DEFAULT, constants};
+use zcash_primitives::constants;
 
 use zcash_primitives::primitives::{PaymentAddress, ProofGenerationKey, ValueCommitment};
-use zcash_primitives::primitives::{AssetType};
 
 use super::ecc;
 use super::pedersen_hash;
@@ -260,7 +259,7 @@ impl<'a, E: JubjubEngine> Circuit<E> for Spend<'a, E> {
             // Get the value in little-endian bit order
             let (asset_generator_bits, value_bits) = expose_value_commitment(
                 cs.namespace(|| "value commitment"),
-                self.value_commitment.as_ref().map(|vc| vc.clone()),
+                self.value_commitment.as_ref().cloned(),
                 self.params,
             )?;
 
@@ -441,8 +440,6 @@ impl<'a, E: JubjubEngine> Circuit<E> for Spend<'a, E> {
 impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
     fn synthesize<CS: ConstraintSystem<E>>(self, cs: &mut CS) -> Result<(), SynthesisError>
     {
-        use byteorder::{ByteOrder, LittleEndian};
-        use bellman::gadgets::uint32::UInt32;
         use itertools::multizip;
         // Let's start to construct our note, which contains
         // value (big endian)
@@ -629,7 +626,7 @@ fn test_input_circuit_with_bls12_381() {
 
     let tree_depth = 32;
 
-    let asset_type = ASSET_TYPE_DEFAULT.clone();
+    let asset_type = *ASSET_TYPE_DEFAULT;
 
     for _ in 0..10 {
         let value_commitment = ValueCommitment {
@@ -672,7 +669,7 @@ fn test_input_circuit_with_bls12_381() {
             let rk = viewing_key.rk(ar, params).to_xy();
             let expected_value_cm = value_commitment.cm(params).to_xy();
             let note = Note {
-                asset_type : asset_type,
+                asset_type,
                 value: value_commitment.value,
                 g_d: g_d.clone(),
                 pk_d: payment_address.pk_d().clone(),
@@ -810,7 +807,7 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
         "32959334601512756708397683646222389414681003290313255304927423560477040775488",
     ];
 
-    let asset_type = ASSET_TYPE_DEFAULT.clone();
+    let asset_type = *ASSET_TYPE_DEFAULT;
 
     for i in 0..10 {
         let value_commitment = ValueCommitment {
@@ -861,7 +858,7 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
                 Fr::from_str(&expected_cm_ys[i as usize]).unwrap()
             );
             let note = Note {
-                asset_type: asset_type,
+                asset_type,
                 value: value_commitment.value,
                 g_d: g_d.clone(),
                 pk_d: payment_address.pk_d().clone(),
@@ -1035,7 +1032,7 @@ fn test_output_circuit_with_bls12_381() {
                 "79dbf2dd7446caa7ccbeecc4de9a8f44bcb7fa8cca8c77606852b68f52376a01"
             );
 
-            let asset_type = ASSET_TYPE_DEFAULT.clone();
+            let asset_type = *ASSET_TYPE_DEFAULT;
 
             let expected_cm = payment_address.create_note(
                 asset_type,

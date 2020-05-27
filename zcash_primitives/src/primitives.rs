@@ -89,7 +89,7 @@ impl<E: JubjubEngine> Copy for AssetType<E> { }
 impl<E: JubjubEngine> Clone for AssetType<E> {
     fn clone(&self) -> Self { 
         AssetType::<E> {
-            identifier: self.identifier.clone(),
+            identifier: self.identifier,
             _marker: PhantomData,
         }
     }

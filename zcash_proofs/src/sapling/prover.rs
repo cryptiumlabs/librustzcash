@@ -98,8 +98,8 @@ impl SaplingProvingContext {
 
         // Let's compute the nullifier while we have the position
         let note = Note {
-            asset_type: asset_type,
-            value: value,
+            asset_type,
+            value,
             g_d: diversifier
                 .g_d::<Bls12>(params)
                 .expect("was a valid diversifier before"),

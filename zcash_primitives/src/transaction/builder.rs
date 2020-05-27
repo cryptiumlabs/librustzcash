@@ -83,7 +83,7 @@ impl SaplingOutput {
         let rcm = Fs::random(rng);
 
         let note = Note {
-            asset_type: ASSET_TYPE_DEFAULT.clone(),
+            asset_type: *ASSET_TYPE_DEFAULT,
             g_d,
             pk_d: to.pk_d().clone(),
             value: value.into(),
@@ -592,7 +592,7 @@ impl<R: RngCore + CryptoRng> Builder<R> {
                     (
                         payment_address,
                         Note {
-                            asset_type: ASSET_TYPE_DEFAULT.clone(),
+                            asset_type: *ASSET_TYPE_DEFAULT,
                             g_d,
                             pk_d,
                             r: Fs::random(&mut self.rng),
@@ -652,7 +652,7 @@ impl<R: RngCore + CryptoRng> Builder<R> {
         }
         self.mtx.binding_sig = Some(
             prover
-                .binding_sig(&mut ctx, self.mtx.value_balance, &sighash, ASSET_TYPE_DEFAULT.clone())
+                .binding_sig(&mut ctx, self.mtx.value_balance, &sighash, *ASSET_TYPE_DEFAULT)
                 .map_err(|()| Error::BindingSig)?,
         );
 
