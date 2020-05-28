@@ -69,6 +69,17 @@ impl<E: JubjubEngine> AssetType<E> {
     pub fn get_identifier(&self) -> &[u8; constants::ASSET_TYPE_LENGTH] {
         &self.identifier
     }
+    pub fn from_identifier(
+        identifier : &[u8 ; constants::ASSET_TYPE_LENGTH],
+        params: &E::Params,
+    ) -> Option<AssetType::<E>> {
+        if AssetType::<E>::hash_to_point(identifier, params).is_some() {
+            return Some(AssetType::<E>{ identifier : *identifier, _marker: PhantomData });
+        } else {
+            None
+        }
+    }
+
     pub fn value_commitment_generator(
         &self,
         params: &E::Params,
