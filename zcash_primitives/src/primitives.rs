@@ -64,7 +64,7 @@ impl<E: JubjubEngine> AssetType<E> {
                 return Some(p);
             }
         } 
-        return None;
+        None
     }
     pub fn get_identifier(&self) -> &[u8; constants::ASSET_TYPE_LENGTH] {
         &self.identifier
@@ -74,7 +74,7 @@ impl<E: JubjubEngine> AssetType<E> {
         params: &E::Params,
     ) -> Option<AssetType::<E>> {
         if AssetType::<E>::hash_to_point(identifier, params).is_some() {
-            return Some(AssetType::<E>{ identifier : *identifier, _marker: PhantomData });
+            Some(AssetType::<E>{ identifier : *identifier, _marker: PhantomData })
         } else {
             None
         }
@@ -125,11 +125,14 @@ impl<E: JubjubEngine> ValueCommitment<E> {
         params: &E::Params
     ) -> edwards::Point<E, PrimeOrder>
     {
-        self.asset_generator.mul_by_cofactor(params).mul(self.value, params)
-              .add(
-                  &params.generator(FixedGenerators::ValueCommitmentRandomness)
-                  .mul(self.randomness, params),
-                  params
+        self.asset_generator
+            .mul_by_cofactor(params)
+            .mul(self.value, params)
+            .add(
+                &params
+                    .generator(FixedGenerators::ValueCommitmentRandomness)
+                    .mul(self.randomness, params),
+                    params,
               )
     }
 }
@@ -353,7 +356,7 @@ impl<E: JubjubEngine> Note<E> {
         // The smallest u-coordinate that is not on the curve
         // is one.
         // TODO: This should be relocated to JubjubEngine as
-        // it"s specific to the curve we're using, not all
+        // it's specific to the curve we're using, not all
         // twisted edwards curves.
         E::Fr::one()
     }

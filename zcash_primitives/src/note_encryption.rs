@@ -232,6 +232,7 @@ fn prf_ock(
 ///     note_encryption::{Memo, SaplingNoteEncryption},
 ///     primitives::{AssetType, Diversifier, PaymentAddress, ValueCommitment},
 ///     JUBJUB,
+///     ASSET_TYPE_DEFAULT,
 /// };
 ///
 /// let mut rng = OsRng;
@@ -244,11 +245,11 @@ fn prf_ock(
 /// let value = 1000;
 /// let rcv = Fs::random(&mut rng);
 /// let cv = ValueCommitment::<Bls12> {
-///     asset_type: AssetType::Zcash,
+///     asset_type: *ASSET_TYPE_DEFAULT,
 ///     value,
 ///     randomness: rcv.clone(),
 /// };
-/// let note = to.create_note(value, rcv, &JUBJUB).unwrap();
+/// let note = to.create_note(*ASSET_TYPE_DEFAULT, value, rcv, &JUBJUB).unwrap();
 /// let cmu = note.cm(&JUBJUB);
 ///
 /// let enc = SaplingNoteEncryption::new(ovk, note, to, Memo::default(), &mut rng);
@@ -387,8 +388,6 @@ fn parse_note_plaintext_without_memo(
         AssetType::<Bls12>::new(&tmp, &JUBJUB)
     };
 
-    //let to = PaymentAddress { pk_d, diversifier };
-    //TODO: was different in master branch:
     let to = PaymentAddress::from_parts(diversifier, pk_d)?;
     let note = to.create_note(asset_type, v, rcm, &JUBJUB).unwrap();
 
@@ -555,7 +554,6 @@ pub fn try_sapling_output_recovery(
         return None;
     }
 
-    //let to = PaymentAddress { pk_d, diversifier }; // TODO: is different in master
     let to = PaymentAddress::from_parts(diversifier, pk_d)?;
     let note = to.create_note(asset_type, v, rcm, &JUBJUB).unwrap();
 
@@ -771,7 +769,7 @@ mod tests {
         let cv = value_commitment.cm(&JUBJUB).into();
 
         let note = pa
-            .create_note(ASSET_TYPE_DEFAULT.clone(), value, Fs::random(&mut rng), &JUBJUB)
+            .create_note(*ASSET_TYPE_DEFAULT, value, Fs::random(&mut rng), &JUBJUB)
             .unwrap();
         let cmu = note.cm(&JUBJUB);
 
@@ -1378,7 +1376,7 @@ mod tests {
             //};
             //TODO: was different in master
             let to = PaymentAddress::from_parts(Diversifier(tv.default_d), pk_d).unwrap();
-            let note = to.create_note(ASSET_TYPE_DEFAULT.clone(), tv.v, rcm, &JUBJUB).unwrap();
+            let note = to.create_note(*ASSET_TYPE_DEFAULT, tv.v, rcm, &JUBJUB).unwrap();
             assert_eq!(note.cm(&JUBJUB), cmu);
 
             //

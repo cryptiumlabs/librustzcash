@@ -1,27 +1,3 @@
-/*extern crate ff;
-extern crate bellman;
-extern crate pairing;
-extern crate rand_core;
-extern crate rand_xorshift;
-extern crate zcash_primitives;
-extern crate zcash_proofs;
-
-use ff::Field;
-use std::time::{Duration, Instant};
-use zcash_primitives::jubjub::{
-    JubjubBls12,
-    edwards,
-    fs,
-};
-use zcash_proofs::circuit::sapling::{
-    Spend
-};
-use zcash_primitives::primitives::{
-    AssetType,
-    Diversifier,
-    ProofGenerationKey,
-    ValueCommitment
-};*/
 use bellman::groth16::*;
 use ff::Field;
 use pairing::bls12_381::{Bls12, Fr};
@@ -29,7 +5,7 @@ use rand_core::{RngCore, SeedableRng};
 use rand_xorshift::XorShiftRng;
 use std::time::{Duration, Instant};
 use zcash_primitives::jubjub::{edwards, fs, JubjubBls12};
-use zcash_primitives::primitives::{AssetType, Diversifier, ProofGenerationKey, ValueCommitment};
+use zcash_primitives::primitives::{Diversifier, ProofGenerationKey, ValueCommitment};
 use zcash_primitives::ASSET_TYPE_DEFAULT;
 use zcash_proofs::circuit::sapling::Spend;
 
@@ -60,7 +36,7 @@ fn main() {
 
     const SAMPLES: u32 = 50;
 
-    let asset_type = ASSET_TYPE_DEFAULT.clone();
+    let asset_type = *ASSET_TYPE_DEFAULT;
 
     let mut total_time = Duration::new(0, 0);
     for _ in 0..SAMPLES {

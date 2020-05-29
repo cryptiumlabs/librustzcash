@@ -56,7 +56,7 @@ pub struct Output<'a, E: JubjubEngine> {
     pub value_commitment: Option<ValueCommitment<E>>,
 
     /// Asset Type (256 bit identifier)
-    pub asset_type_identifier: Vec<Option<bool>>,
+    pub asset_identifier: Vec<Option<bool>>,
 
     /// The payment address of the recipient
     pub payment_address: Option<PaymentAddress<E>>,
@@ -438,8 +438,7 @@ impl<'a, E: JubjubEngine> Circuit<E> for Spend<'a, E> {
 }
 
 impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
-    fn synthesize<CS: ConstraintSystem<E>>(self, cs: &mut CS) -> Result<(), SynthesisError>
-    {
+    fn synthesize<CS: ConstraintSystem<E>>(self, cs: &mut CS) -> Result<(), SynthesisError> {
         use itertools::multizip;
         // Let's start to construct our note, which contains
         // value (big endian)
@@ -448,16 +447,16 @@ impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
 
         let mut asset_generator_preimage = Vec::with_capacity(256);
 
-        for (i, bit) in self.asset_type_identifier.iter().enumerate() { 
+        for (i, bit) in self.asset_identifier.iter().enumerate() { 
             let cs = &mut cs.namespace(|| format!("witness asset type bit {}", i));
 
-            let asset_type_preimage_bit = boolean::Boolean::from(boolean::AllocatedBit::alloc(
+            let asset_identifier_preimage_bit = boolean::Boolean::from(boolean::AllocatedBit::alloc(
                 cs.namespace(|| "asset type bit"),
                 *bit,
             )?);
 
             // Push this boolean for nullifier computation later
-            asset_generator_preimage.push(asset_type_preimage_bit.clone());
+            asset_generator_preimage.push(asset_identifier_preimage_bit.clone());
         }
 
         let asset_generator_image = blake2s::blake2s(
@@ -470,13 +469,19 @@ impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
         let (asset_generator_bits, value_bits) = expose_value_commitment(
             cs.namespace(|| "value commitment"),
             self.value_commitment,
-            self.params
+            self.params,
         )?;
 
         assert_eq!(256, asset_generator_bits.len());
         assert_eq!(256, asset_generator_image.len());
         
         // Check integrity of the asset generator
+        // The following 256 constraints may not be strictly 
+        // necessary; the output of the BLAKE2s hash may be
+        // interpreted directly as a curve point instead
+        // However, witnessing the asset generator separately
+        // and checking equality to the image of the hash
+        // is conceptually clear and not particularly expensive
         for (i, asset_generator_bit, asset_generator_image_bit) in 
                 multizip((0..256, &asset_generator_bits, &asset_generator_image)) {
             boolean::Boolean::enforce_equal(
@@ -628,7 +633,6 @@ fn test_input_circuit_with_bls12_381() {
     let tree_depth = 32;
 
     let asset_type = *ASSET_TYPE_DEFAULT;
-
     for _ in 0..10 {
         let value_commitment = ValueCommitment {
             asset_generator: asset_type.value_commitment_generator(params),  
@@ -809,7 +813,6 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
     ];
 
     let asset_type = *ASSET_TYPE_DEFAULT;
-
     for i in 0..10 {
         let value_commitment = ValueCommitment {
             asset_generator: asset_type.value_commitment_generator(params),
@@ -958,7 +961,7 @@ fn test_output_circuit_with_bls12_381() {
     use rand_xorshift::XorShiftRng;
     use zcash_primitives::{
         jubjub::{JubjubBls12, fs, edwards},
-        primitives::{AssetType, Diversifier, ProofGenerationKey},
+        primitives::{Diversifier, ProofGenerationKey},
         ASSET_TYPE_DEFAULT,
     };
 
@@ -1017,7 +1020,7 @@ fn test_output_circuit_with_bls12_381() {
                 payment_address: Some(payment_address.clone()),
                 commitment_randomness: Some(commitment_randomness),
                 esk: Some(esk.clone()),
-                asset_type_identifier: ASSET_TYPE_DEFAULT.identifier_bits(),
+                asset_identifier: ASSET_TYPE_DEFAULT.identifier_bits(),
             };
 
             instance.synthesize(&mut cs).unwrap();

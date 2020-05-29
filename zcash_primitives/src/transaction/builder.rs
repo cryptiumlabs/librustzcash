@@ -121,7 +121,7 @@ impl SaplingOutput {
             self.note.asset_type,
         );
 
-        let cmu = self.note.cm(&JUBJUB).clone();
+        let cmu = self.note.cm(&JUBJUB);
 
         let enc_ciphertext = encryptor.encrypt_note_plaintext();
         let out_ciphertext = encryptor.encrypt_outgoing_plaintext(&cv, &cmu);
@@ -715,7 +715,6 @@ mod tests {
 
     #[test]
     fn fails_on_negative_change() {
-        use crate::constants;
         let mut rng = OsRng;
 
         // Just use the master key as the ExtendedSpendingKey for this test
@@ -770,7 +769,7 @@ mod tests {
         }
 
         let note1 = to
-            .create_note(ASSET_TYPE_DEFAULT.clone(), 59999, Fs::random(&mut rng), &JUBJUB)
+            .create_note(*ASSET_TYPE_DEFAULT, 59999, Fs::random(&mut rng), &JUBJUB)
             .unwrap();
         let cm1 = Node::new(note1.cm(&JUBJUB).into_repr());
         let mut tree = CommitmentTree::new();
@@ -810,7 +809,7 @@ mod tests {
         }
 
         let note2 = to
-            .create_note(ASSET_TYPE_DEFAULT.clone(), 1, Fs::random(&mut rng), &JUBJUB)
+            .create_note(*ASSET_TYPE_DEFAULT, 1, Fs::random(&mut rng), &JUBJUB)
             .unwrap();
         let cm2 = Node::new(note2.cm(&JUBJUB).into_repr());
         tree.append(cm2).unwrap();
