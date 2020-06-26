@@ -447,6 +447,8 @@ impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
 
         let mut asset_generator_preimage = Vec::with_capacity(256);
 
+        assert_eq!(256, asset_identifier.len());
+
         for (i, bit) in self.asset_identifier.iter().enumerate() { 
             let cs = &mut cs.namespace(|| format!("witness asset type bit {}", i));
 
@@ -455,9 +457,11 @@ impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
                 *bit,
             )?);
 
-            // Push this boolean for nullifier computation later
+            // Push this boolean for asset generator computation later
             asset_generator_preimage.push(asset_identifier_preimage_bit.clone());
         }
+
+        assert_eq!(256, asset_generator_preimage.len());
 
         let asset_generator_image = blake2s::blake2s(
             cs.namespace(|| "value base computation"),
