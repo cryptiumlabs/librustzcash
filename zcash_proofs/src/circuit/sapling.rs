@@ -447,7 +447,7 @@ impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
 
         let mut asset_generator_preimage = Vec::with_capacity(256);
 
-        assert_eq!(256, asset_identifier.len());
+        assert_eq!(256, self.asset_identifier.len());
 
         for (i, bit) in self.asset_identifier.iter().enumerate() { 
             let cs = &mut cs.namespace(|| format!("witness asset type bit {}", i));
