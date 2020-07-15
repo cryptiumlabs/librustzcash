@@ -98,6 +98,7 @@ extern "C" {
         const unsigned char *diversifier,
         const unsigned char *rcm,
         const unsigned char *ar,
+        const unsigned char *asset_identifier,
         const uint64_t value,
         const unsigned char *anchor,
         const unsigned char *witness,
@@ -114,6 +115,7 @@ extern "C" {
         const unsigned char *esk,
         const unsigned char *payment_address,
         const unsigned char *rcm,
+        const unsigned char *asset_identifier,
         const uint64_t value,
         unsigned char *cv,
         unsigned char *zkproof
@@ -124,6 +126,7 @@ extern "C" {
     /// we can internally check consistency.
     bool librustzcash_sapling_binding_sig(
         const void *ctx,
+        uint32_t assetType,
         int64_t valueBalance,
         const unsigned char *sighash,
         unsigned char *result
@@ -164,6 +167,7 @@ extern "C" {
     /// transaction given valueBalance and the binding signature.
     bool librustzcash_sapling_final_check(
         void *ctx,
+        uint32_t assetType,
         int64_t valueBalance,
         const unsigned char *bindingSig,
         const unsigned char *sighashValue
@@ -177,11 +181,13 @@ extern "C" {
     ///
     /// The `diversifier` parameter must be 11 bytes in length.
     /// The `pk_d`, `r`, `ak` and `nk` parameters must be of length 32.
+    /// The `asset_identifier` parameter must be of length 32.
     /// The result is also of length 32 and placed in `result`.
     /// Returns false if the diversifier or pk_d is not valid
     bool librustzcash_sapling_compute_nf(
         const unsigned char *diversifier,
         const unsigned char *pk_d,
+        const unsigned char *asset_identifier,
         const uint64_t value,
         const unsigned char *r,
         const unsigned char *ak,
@@ -194,11 +200,13 @@ extern "C" {
     ///
     /// The `diversifier` parameter must be 11 bytes in length.
     /// The `pk_d` and `r` parameters must be of length 32.
+    /// The `asset_identifier` parameter must be of length 32.
     /// The result is also of length 32 and placed in `result`.
     /// Returns false if the diversifier or pk_d is not valid
     bool librustzcash_sapling_compute_cm(
         const unsigned char *diversifier,
         const unsigned char *pk_d,
+        const unsigned char *asset_identifier,
         const uint64_t value,
         const unsigned char *r,
         unsigned char *result

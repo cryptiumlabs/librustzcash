@@ -6,7 +6,7 @@ use pairing::bls12_381::{Bls12, Fr};
 use std::path::Path;
 use zcash_primitives::{
     jubjub::{edwards, fs::Fs, Unknown},
-    primitives::{Diversifier, PaymentAddress, ProofGenerationKey},
+    primitives::{AssetType, Diversifier, PaymentAddress, ProofGenerationKey},
 };
 use zcash_primitives::{
     merkle_tree::MerklePath,
@@ -128,6 +128,7 @@ impl TxProver for LocalTxProver {
         value: u64,
         anchor: Fr,
         merkle_path: MerklePath<Node>,
+        asset_type: AssetType<Bls12>,
     ) -> Result<
         (
             [u8; GROTH_PROOF_SIZE],
@@ -141,6 +142,7 @@ impl TxProver for LocalTxProver {
             diversifier,
             rcm,
             ar,
+            asset_type,
             value,
             anchor,
             merkle_path,
@@ -164,11 +166,13 @@ impl TxProver for LocalTxProver {
         payment_address: PaymentAddress<Bls12>,
         rcm: Fs,
         value: u64,
+        asset_type: AssetType<Bls12>,
     ) -> ([u8; GROTH_PROOF_SIZE], edwards::Point<Bls12, Unknown>) {
         let (proof, cv) = ctx.output_proof(
             esk,
             payment_address,
             rcm,
+            asset_type,
             value,
             &self.output_params,
             &JUBJUB,
@@ -187,7 +191,8 @@ impl TxProver for LocalTxProver {
         ctx: &mut Self::SaplingProvingContext,
         value_balance: Amount,
         sighash: &[u8; 32],
+        asset_type : AssetType<Bls12>,
     ) -> Result<Signature, ()> {
-        ctx.binding_sig(value_balance, sighash, &JUBJUB)
+        ctx.binding_sig(asset_type, value_balance, sighash, &JUBJUB)
     }
 }

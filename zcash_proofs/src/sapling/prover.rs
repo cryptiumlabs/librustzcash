@@ -7,7 +7,7 @@ use pairing::bls12_381::{Bls12, Fr};
 use rand_core::OsRng;
 use zcash_primitives::{
     jubjub::{edwards, fs::Fs, FixedGenerators, JubjubBls12, Unknown},
-    primitives::{Diversifier, Note, PaymentAddress, ProofGenerationKey, ValueCommitment},
+    primitives::{AssetType, Diversifier, Note, PaymentAddress, ProofGenerationKey, ValueCommitment},
 };
 use zcash_primitives::{
     merkle_tree::MerklePath,
@@ -44,6 +44,7 @@ impl SaplingProvingContext {
         diversifier: Diversifier,
         rcm: Fs,
         ar: Fs,
+        asset_type: AssetType<Bls12>,
         value: u64,
         anchor: Fr,
         merkle_path: MerklePath<Node>,
@@ -75,7 +76,8 @@ impl SaplingProvingContext {
 
         // Construct the value commitment
         let value_commitment = ValueCommitment::<Bls12> {
-            value,
+            asset_generator: asset_type.value_commitment_generator(params),
+            value: value,
             randomness: rcv,
         };
 
@@ -96,6 +98,7 @@ impl SaplingProvingContext {
 
         // Let's compute the nullifier while we have the position
         let note = Note {
+            asset_type,
             value,
             g_d: diversifier
                 .g_d::<Bls12>(params)
@@ -186,6 +189,7 @@ impl SaplingProvingContext {
         esk: Fs,
         payment_address: PaymentAddress<Bls12>,
         rcm: Fs,
+        asset_type: AssetType<Bls12>,
         value: u64,
         proving_key: &Parameters<Bls12>,
         params: &JubjubBls12,
@@ -210,7 +214,8 @@ impl SaplingProvingContext {
 
         // Construct the value commitment for the proof instance
         let value_commitment = ValueCommitment::<Bls12> {
-            value,
+            asset_generator: asset_type.value_commitment_generator(params),
+            value: value,
             randomness: rcv,
         };
 
@@ -221,6 +226,7 @@ impl SaplingProvingContext {
             payment_address: Some(payment_address.clone()),
             commitment_randomness: Some(rcm),
             esk: Some(esk),
+            asset_identifier: asset_type.identifier_bits(),
         };
 
         // Create proof
@@ -247,6 +253,7 @@ impl SaplingProvingContext {
     /// and output_proof() must be completed before calling this function.
     pub fn binding_sig(
         &self,
+        asset_type: AssetType<Bls12>,
         value_balance: Amount,
         sighash: &[u8; 32],
         params: &JubjubBls12,
@@ -265,7 +272,10 @@ impl SaplingProvingContext {
         // against our derived bvk.
         {
             // Compute value balance
-            let mut value_balance = compute_value_balance(value_balance, params).ok_or(())?;
+            let mut value_balance = match compute_value_balance(asset_type, value_balance, params) {
+                Some(a) => a,
+                None => return Err(()),
+            };
 
             // Subtract value_balance from cv_sum to get final bvk
             value_balance = value_balance.negate();

@@ -313,7 +313,7 @@ impl JubjubBls12 {
             fixed_base_generators[FixedGenerators::ValueCommitmentValue as usize] =
                 JubjubBls12::find_group_hash(
                     b"v",
-                    constants::VALUE_COMMITMENT_GENERATOR_PERSONALIZATION,
+                    constants::VALUE_COMMITMENT_RANDOMNESS_PERSONALIZATION,
                     &tmp_params,
                 );
 
