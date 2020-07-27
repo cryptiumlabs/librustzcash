@@ -7,7 +7,7 @@ use crate::{
         PrimeOrder, ToUniform, Unknown,
     },
     primitives::{AssetType, Diversifier, Note, PaymentAddress},
-    constants::ASSET_TYPE_LENGTH, 
+    constants::ASSET_TYPE_LENGTH,
 };
 use blake2b_simd::{Hash as Blake2bHash, Params as Blake2bParams};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};

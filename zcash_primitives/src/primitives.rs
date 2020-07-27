@@ -23,7 +23,7 @@ pub struct AssetType<E: JubjubEngine> {
 
 impl<E: JubjubEngine> AssetType<E> {
     pub fn new(
-        name: &[u8], 
+        name: &[u8],
         params: &E::Params,
     ) -> AssetType::<E> {
         assert_eq!(constants::ASSET_TYPE_PERSONALIZATION.len(), 8);
@@ -44,7 +44,7 @@ impl<E: JubjubEngine> AssetType<E> {
         }
     }
     fn hash_to_point(
-        identifier: &[u8; 32], 
+        identifier: &[u8; 32],
         params: &E::Params,
     ) -> Option<edwards::Point<E, Unknown>> {
         assert_eq!(constants::VALUE_COMMITMENT_GENERATOR_PERSONALIZATION.len(), 8);
@@ -58,12 +58,12 @@ impl<E: JubjubEngine> AssetType<E> {
             .to_state()
             .update(identifier)
             .finalize();
- 
+
         if let Ok(p) = edwards::Point::<E, _>::read(h.as_ref(), params) {
             if p.mul_by_cofactor(params) != edwards::Point::zero() {
                 return Some(p);
             }
-        } 
+        }
         None
     }
     pub fn get_identifier(&self) -> &[u8; constants::ASSET_TYPE_LENGTH] {
@@ -92,13 +92,13 @@ impl<E: JubjubEngine> AssetType<E> {
             .iter()
             .flat_map(|&v| (0..8).map(move |i| Some((v >> i) & 1 == 1)))
             .collect()
-    }    
+    }
 }
 
 impl<E: JubjubEngine> Copy for AssetType<E> { }
 
 impl<E: JubjubEngine> Clone for AssetType<E> {
-    fn clone(&self) -> Self { 
+    fn clone(&self) -> Self {
         AssetType::<E> {
             identifier: self.identifier,
             _marker: PhantomData,
@@ -108,7 +108,7 @@ impl<E: JubjubEngine> Clone for AssetType<E> {
 
 impl<E: JubjubEngine> PartialEq for AssetType<E> {
     fn eq(&self, other: &Self) -> bool {
-        self.get_identifier() == other.get_identifier() 
+        self.get_identifier() == other.get_identifier()
     }
 }
 
@@ -383,9 +383,9 @@ impl<E: JubjubEngine> Note<E> {
         // Write pk_d
         self.pk_d.write(&mut note_contents).unwrap();
 
-        assert_eq!(note_contents.len(), 
+        assert_eq!(note_contents.len(),
             32 + // asset_generator bytes
-            32 + // g_d bytes 
+            32 + // g_d bytes
             32 + // p_d bytes
             8 // value bytes
         );
@@ -443,7 +443,7 @@ fn test_value_commitment_generator() {
     use pairing::bls12_381::{Bls12, Fr, FrRepr};
 
     let test_assets = vec![ AssetType::<Bls12>::new(b"default", &JUBJUB),
-        AssetType::<Bls12>::new(b"", &JUBJUB), 
+        AssetType::<Bls12>::new(b"", &JUBJUB),
         AssetType::<Bls12>::new(b"The Magic Words are Squeamish Ossifrage", &JUBJUB),
         AssetType::<Bls12>::new(b"AliceToken", &JUBJUB),
         AssetType::<Bls12>::new(b"BobToken", &JUBJUB),
@@ -453,42 +453,42 @@ fn test_value_commitment_generator() {
         AssetType::<Bls12>::new(b"3.1415926535 8979323846 2643383279", &JUBJUB),
         AssetType::<Bls12>::new(b"KT1000000000000000000000000000000000000", &JUBJUB),
         AssetType::<Bls12>::new(b"KT1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ", &JUBJUB),
-        AssetType::<Bls12>::new(b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", &JUBJUB), 
+        AssetType::<Bls12>::new(b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", &JUBJUB),
         AssetType::<Bls12>::new(b"\x01\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xf0", &JUBJUB),
     ];
 
     let test_asset_x = vec![
-        [0xe0879910d871cb2b, 0xfb7a2ceffe853a20, 0xd7d14c48a4944d37, 0x05037eb3b92f6bf7], 
-        [0x96545c483d30090b, 0x23fc05c78d8028bd, 0x536b953d5e65b99d, 0x4f090f1172f171ae], 
-        [0x86dc9613aa7ca240, 0x66d1d90259c02cc2, 0x4dcdcbc1a91e6192, 0x6489b3ab46560072], 
-        [0xd3c14bf30517dce0, 0x292a846661ed0a5e, 0xeb422e217ad53bea, 0x5df6c90834104bdb], 
-        [0x9189788cdec335f9, 0xbb94b9ccbbe7772d, 0x9a7ac632fda3f0d8, 0x69c86d931a07b522], 
-        [0x6ac4addc39f1233f, 0xde7626dbea4f0bce, 0xf248583018c6084d, 0x17734e1f30d51a54], 
-        [0xea44fe5bc5eafefe, 0x1775f40b34be866c, 0xb0e9f36585ad17d3, 0x6f4ea7c3c2a937b3], 
-        [0x9b87bcaf37b4e815, 0x84f4b87cca8589c7, 0x0679c9b5bec619ff, 0x55d40c7c71ec2653], 
-        [0x68ebdf3f6d025f46, 0xc1856dee8140b734, 0x19d8f6c6770a3b68, 0x3c08a74c4daaaeb0], 
-        [0xc4f9e1dc37cf7a7c, 0x5f65d49689b13e3c, 0x4809ab4a798710cb, 0x298b75bd60e8515f], 
-        [0x545d366cf3de078c, 0xbc8eb83a9172483a, 0x650e41c1f9f4be93, 0x690db47d6662907d], 
-        [0xeb92094630617ffb, 0x46927e8d1c10fa35, 0x4a102a7b7645e008, 0x7365da37f711b5db], 
-        [0xac5fb48d2fee3bfa, 0x8e5ffa1f5af9b11a, 0x93605f7270d15d70, 0x2e9a1d01a2540b81], 
+        [0xe0879910d871cb2b, 0xfb7a2ceffe853a20, 0xd7d14c48a4944d37, 0x05037eb3b92f6bf7],
+        [0x96545c483d30090b, 0x23fc05c78d8028bd, 0x536b953d5e65b99d, 0x4f090f1172f171ae],
+        [0x86dc9613aa7ca240, 0x66d1d90259c02cc2, 0x4dcdcbc1a91e6192, 0x6489b3ab46560072],
+        [0xd3c14bf30517dce0, 0x292a846661ed0a5e, 0xeb422e217ad53bea, 0x5df6c90834104bdb],
+        [0x9189788cdec335f9, 0xbb94b9ccbbe7772d, 0x9a7ac632fda3f0d8, 0x69c86d931a07b522],
+        [0x6ac4addc39f1233f, 0xde7626dbea4f0bce, 0xf248583018c6084d, 0x17734e1f30d51a54],
+        [0xea44fe5bc5eafefe, 0x1775f40b34be866c, 0xb0e9f36585ad17d3, 0x6f4ea7c3c2a937b3],
+        [0x9b87bcaf37b4e815, 0x84f4b87cca8589c7, 0x0679c9b5bec619ff, 0x55d40c7c71ec2653],
+        [0x68ebdf3f6d025f46, 0xc1856dee8140b734, 0x19d8f6c6770a3b68, 0x3c08a74c4daaaeb0],
+        [0xc4f9e1dc37cf7a7c, 0x5f65d49689b13e3c, 0x4809ab4a798710cb, 0x298b75bd60e8515f],
+        [0x545d366cf3de078c, 0xbc8eb83a9172483a, 0x650e41c1f9f4be93, 0x690db47d6662907d],
+        [0xeb92094630617ffb, 0x46927e8d1c10fa35, 0x4a102a7b7645e008, 0x7365da37f711b5db],
+        [0xac5fb48d2fee3bfa, 0x8e5ffa1f5af9b11a, 0x93605f7270d15d70, 0x2e9a1d01a2540b81],
     ];
 
     let test_asset_y = vec![
-        [0x60df5ed73f0d76f0, 0x5c879f102de6ff9c, 0xe147060d1b0352a, 0x2fec7b1f2a0df2cb], 
-        [0xa02f5a976bbbeb6c, 0x42c9411d8c2475d0, 0x3d0e7d283c1e2649, 0x5035512106f2e271], 
-        [0xdbc237631a6dc574, 0xcf07d4b501ac1f30, 0xc77f9418d7b44638, 0x4c560a3017720d59], 
-        [0x5303f78241a0d89, 0x7840d04761a77c4d, 0x11e714cfc1c6fc81, 0x69545ca858c70149], 
-        [0x97b445cf29abb41f, 0xb22d481b003857be, 0xcfad7a7669c3731, 0x3bc5c9f5d36a2bee], 
-        [0xca6ecc0c4f498694, 0x10851027ebd70d4e, 0x4c7080b7dc866972, 0x4fa38d1be066b7c1], 
-        [0xb01b90f645c755e1, 0xe020578452853993, 0x248dae4cac54d407, 0x4a5347ed7ccb9133], 
-        [0xa891abd9dfecd5d3, 0xff2cddc1942824f3, 0xa989cd40c7143556, 0x49c4987bd1511d1c], 
-        [0x64d7f8493742c418, 0x24f3ed7c66fb9a5a, 0xb26184b6929d5ee1, 0x26cf96947b196f43], 
-        [0xbe7312d347802253, 0x9b492d07c10e0aa, 0xcee6006c5011f005, 0xa9b4730d17c9712], 
-        [0x8dd0193dea871cf4, 0x9bc9b110f84a8fd5, 0x18b6ce6d237a572d, 0x3032be91e07999df], 
-        [0xceac2f393ed6f78e, 0xde3497c1d2829ed2, 0x46cd16cddd9ac241, 0x604a56bfe040559a], 
-        [0x414ea56a70d41865, 0x901a88554fd0d29, 0x48b7a1788e8ab76e, 0x404bd595dc14cb7c], 
+        [0x60df5ed73f0d76f0, 0x5c879f102de6ff9c, 0xe147060d1b0352a, 0x2fec7b1f2a0df2cb],
+        [0xa02f5a976bbbeb6c, 0x42c9411d8c2475d0, 0x3d0e7d283c1e2649, 0x5035512106f2e271],
+        [0xdbc237631a6dc574, 0xcf07d4b501ac1f30, 0xc77f9418d7b44638, 0x4c560a3017720d59],
+        [0x5303f78241a0d89, 0x7840d04761a77c4d, 0x11e714cfc1c6fc81, 0x69545ca858c70149],
+        [0x97b445cf29abb41f, 0xb22d481b003857be, 0xcfad7a7669c3731, 0x3bc5c9f5d36a2bee],
+        [0xca6ecc0c4f498694, 0x10851027ebd70d4e, 0x4c7080b7dc866972, 0x4fa38d1be066b7c1],
+        [0xb01b90f645c755e1, 0xe020578452853993, 0x248dae4cac54d407, 0x4a5347ed7ccb9133],
+        [0xa891abd9dfecd5d3, 0xff2cddc1942824f3, 0xa989cd40c7143556, 0x49c4987bd1511d1c],
+        [0x64d7f8493742c418, 0x24f3ed7c66fb9a5a, 0xb26184b6929d5ee1, 0x26cf96947b196f43],
+        [0xbe7312d347802253, 0x9b492d07c10e0aa, 0xcee6006c5011f005, 0xa9b4730d17c9712],
+        [0x8dd0193dea871cf4, 0x9bc9b110f84a8fd5, 0x18b6ce6d237a572d, 0x3032be91e07999df],
+        [0xceac2f393ed6f78e, 0xde3497c1d2829ed2, 0x46cd16cddd9ac241, 0x604a56bfe040559a],
+        [0x414ea56a70d41865, 0x901a88554fd0d29, 0x48b7a1788e8ab76e, 0x404bd595dc14cb7c],
     ];
-    
+
     for i in 0..13 {
         let asset = &test_assets[i];
         let x = Fr::from_repr(FrRepr(test_asset_x[i])).expect("Test case value generator x invalid");
