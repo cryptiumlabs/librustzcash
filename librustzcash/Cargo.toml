@@ -1,5 +1,5 @@
 [package]
-name = "librustzcash"
+name = "librustzcash-masp"
 description = "Rust FFI used by the zcashd binary. Not an official API."
 version = "0.2.0"
 authors = [
@@ -15,7 +15,7 @@ license = "MIT OR Apache-2.0"
 edition = "2018"
 
 [lib]
-name = "rustzcash"
+name = "rustzcash_masp"
 path = "src/rustzcash.rs"
 crate-type = ["staticlib"]
 
