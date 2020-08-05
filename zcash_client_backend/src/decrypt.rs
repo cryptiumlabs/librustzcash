@@ -1,5 +1,5 @@
 use zcash_primitives::{
-    consensus,
+    consensus::{self, BlockHeight},
     note_encryption::{try_sapling_note_decryption, try_sapling_output_recovery, Memo},
     primitives::{Note, PaymentAddress},
     transaction::Transaction,
@@ -30,7 +30,7 @@ pub struct DecryptedOutput {
 /// Scans a [`Transaction`] for any information that can be decrypted by the set of
 /// [`ExtendedFullViewingKey`]s.
 pub fn decrypt_transaction<P: consensus::Parameters>(
-    height: u32,
+    height: BlockHeight,
     tx: &Transaction,
     extfvks: &[ExtendedFullViewingKey],
 ) -> Vec<DecryptedOutput> {
