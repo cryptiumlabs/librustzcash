@@ -74,7 +74,9 @@ pub enum FixedGenerators {
     /// The value commitment is used to check balance between
     /// inputs and outputs. The value is placed over this
     /// generator.
-    ValueCommitmentValue = 3,
+    /// Not used in the MASP.
+    //ValueCommitmentValue = 3,
+    
     /// The value commitment is randomized over this generator,
     /// for privacy.
     ValueCommitmentRandomness = 4,
@@ -307,13 +309,6 @@ impl JubjubBls12 {
                 JubjubBls12::find_group_hash(
                     &[],
                     constants::NULLIFIER_POSITION_IN_TREE_GENERATOR_PERSONALIZATION,
-                    &tmp_params,
-                );
-
-            fixed_base_generators[FixedGenerators::ValueCommitmentValue as usize] =
-                JubjubBls12::find_group_hash(
-                    b"v",
-                    constants::VALUE_COMMITMENT_GENERATOR_PERSONALIZATION,
                     &tmp_params,
                 );
 
