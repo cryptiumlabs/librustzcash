@@ -80,6 +80,7 @@ impl<E: JubjubEngine> AssetType<E> {
         }
     }
 
+    /// Produces an asset generator without cofactor cleared
     pub fn value_commitment_generator(
         &self,
         params: &E::Params,
