@@ -79,13 +79,13 @@ pub enum FixedGenerators {
     
     /// The value commitment is randomized over this generator,
     /// for privacy.
-    ValueCommitmentRandomness = 4,
+    ValueCommitmentRandomness = 3,
 
     /// The spender proves discrete log with respect to this
     /// base at spend time.
-    SpendingKeyGenerator = 5,
+    SpendingKeyGenerator = 4,
 
-    Max = 6,
+    Max = 5,
 }
 
 pub trait ToUniform {
