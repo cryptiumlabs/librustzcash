@@ -303,4 +303,61 @@ impl SaplingProvingContext {
             params,
         ))
     }
+
+    ///
+
+    /// Create the multi bindingSig for a Sapling transaction. All calls to spend_proof()
+    /// and output_proof() must be completed before calling this function.
+    /// This function is only necessary when shielding or unshielding multiple assets 
+    /// in one transaction
+    pub fn multi_binding_sig(
+        &self,
+        asset_and_value: &[ (AssetType<Bls12>, Amount) ],
+        sighash: &[u8; 32],
+        params: &JubjubBls12,
+    ) -> Result<Signature, ()> {
+        // Initialize secure RNG
+        let mut rng = OsRng;
+
+        // Grab the current `bsk` from the context
+        let bsk = PrivateKey::<Bls12>(self.bsk);
+
+        // Grab the `bvk` using DerivePublic.
+        let bvk = PublicKey::from_private(&bsk, FixedGenerators::ValueCommitmentRandomness, params);
+
+        // In order to check internal consistency, let's use the accumulated value
+        // commitments (as the verifier would) and apply value_balance to compare
+        // against our derived bvk.
+        let tmp = asset_and_value.iter().map( |(asset_type, value_balance)|
+            {
+                // Compute value balance for each asset
+                compute_value_balance(*asset_type, *value_balance, params)
+            })
+            .try_fold(self.cv_sum.clone(), |tmp, value_balance| 
+            {
+                // Compute cv_sum minus sum of all value balances
+                // Error for bad value balances (-INT64_MAX value) 
+                Ok(tmp.add(&value_balance.ok_or(())?.negate(), params))
+            }
+        )?; 
+        // The result should be the same, unless the provided valueBalance is wrong.
+        if bvk.0 != tmp {
+            return Err(());
+        }
+
+        // Construct signature message
+        let mut data_to_be_signed = [0u8; 64];
+        bvk.0
+            .write(&mut data_to_be_signed[0..32])
+            .expect("message buffer should be 32 bytes");
+        (&mut data_to_be_signed[32..64]).copy_from_slice(&sighash[..]);
+
+        // Sign
+        Ok(bsk.sign(
+            &data_to_be_signed,
+            &mut rng,
+            FixedGenerators::ValueCommitmentRandomness,
+            params,
+        ))
+    }
 }
