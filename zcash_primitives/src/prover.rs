@@ -81,7 +81,7 @@ pub(crate) mod mock {
 
     use crate::{
         jubjub::{PrimeOrder, JubjubBls12, edwards, fs::Fs, FixedGenerators, Unknown},
-        primitives::{AssetType, Diversifier, PaymentAddress, ProofGenerationKey, ValueCommitment},
+        primitives::{AssetType, Diversifier, PaymentAddress, ProofGenerationKey},
     };
 
     use crate::{
@@ -123,11 +123,10 @@ pub(crate) mod mock {
         > {
             let mut rng = OsRng;
 
-            let cv = ValueCommitment::<Bls12> {
-                asset_generator: asset_type.value_commitment_generator(&JUBJUB),
-                value,
-                randomness: Fs::random(&mut rng),
-            }
+            let cv = asset_type.value_commitment(
+                value, 
+                Fs::random(&mut rng),
+                &JUBJUB)
             .cm(&JUBJUB)
             .into();
 
@@ -151,11 +150,10 @@ pub(crate) mod mock {
         ) -> ([u8; GROTH_PROOF_SIZE], edwards::Point<Bls12, Unknown>) {
             let mut rng = OsRng;
 
-            let cv = ValueCommitment::<Bls12> {
-                asset_generator: asset_type.value_commitment_generator(&JUBJUB),
+            let cv = asset_type.value_commitment(
                 value,
-                randomness: Fs::random(&mut rng),
-            }
+                Fs::random(&mut rng),
+                &JUBJUB)
             .cm(&JUBJUB)
             .into();
 

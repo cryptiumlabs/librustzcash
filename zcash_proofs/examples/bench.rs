@@ -118,11 +118,10 @@ fn main() {
 
     for i in 0..50 {
         println!("Running Output sample {}", i);
-        let value_commitment = ValueCommitment {
-            asset_generator: ASSET_TYPE_DEFAULT.value_commitment_generator(jubjub_params),
-            value: rng.next_u64(),
-            randomness: fs::Fs::random(rng),
-        };
+        let value_commitment = ASSET_TYPE_DEFAULT.value_commitment(
+            rng.next_u64(),
+            fs::Fs::random(rng),
+            jubjub_params);
     
         let nsk = fs::Fs::random(rng);
         let ak = edwards::Point::rand(rng, jubjub_params).mul_by_cofactor(jubjub_params);

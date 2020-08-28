@@ -7,7 +7,7 @@ use pairing::bls12_381::{Bls12, Fr};
 use rand_core::OsRng;
 use zcash_primitives::{
     jubjub::{edwards, fs::Fs, FixedGenerators, JubjubBls12, Unknown},
-    primitives::{AssetType, Diversifier, Note, PaymentAddress, ProofGenerationKey, ValueCommitment},
+    primitives::{AssetType, Diversifier, Note, PaymentAddress, ProofGenerationKey},
 };
 use zcash_primitives::{
     merkle_tree::MerklePath,
@@ -75,11 +75,11 @@ impl SaplingProvingContext {
         }
 
         // Construct the value commitment
-        let value_commitment = ValueCommitment::<Bls12> {
-            asset_generator: asset_type.value_commitment_generator(params),
-            value: value,
-            randomness: rcv,
-        };
+        let value_commitment = asset_type.value_commitment(
+            value,
+            rcv,
+            params
+        );
 
         // Construct the viewing key
         let viewing_key = proof_generation_key.to_viewing_key(params);
@@ -213,11 +213,11 @@ impl SaplingProvingContext {
         }
 
         // Construct the value commitment for the proof instance
-        let value_commitment = ValueCommitment::<Bls12> {
-            asset_generator: asset_type.value_commitment_generator(params),
-            value: value,
-            randomness: rcv,
-        };
+        let value_commitment = asset_type.value_commitment(
+            value,
+            rcv,
+            params
+        );
 
         // We now have a full witness for the output proof.
         let instance = Output {

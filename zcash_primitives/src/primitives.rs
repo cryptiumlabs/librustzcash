@@ -81,19 +81,41 @@ impl<E: JubjubEngine> AssetType<E> {
     }
 
     /// Produces an asset generator without cofactor cleared
-    pub fn value_commitment_generator(
+    pub fn asset_generator(
         &self,
         params: &E::Params,
     ) -> edwards::Point<E, Unknown> {
         AssetType::<E>::hash_to_point(self.get_identifier(), params)
             .expect("AssetType internal identifier state inconsistent")
     }
+
+    /// Produces a value commitment generator with cofactor cleared
+    pub fn value_commitment_generator(
+        &self,
+        params: &E::Params,
+    ) -> edwards::Point<E, PrimeOrder> {
+        self.asset_generator(params).mul_by_cofactor(params)
+    }
+
     pub fn identifier_bits(&self) -> Vec<Option<bool>> {
         self.get_identifier()
             .iter()
             .flat_map(|&v| (0..8).map(move |i| Some((v >> i) & 1 == 1)))
             .collect()
-    }    
+    }
+    
+    pub fn value_commitment(
+        &self,
+        value: u64,
+        randomness: E::Fs,
+        params: &E::Params,
+    ) -> ValueCommitment<E> {
+        ValueCommitment::<E> {
+            asset_generator: self.asset_generator(params),
+            value,
+            randomness,
+        }
+    }
 }
 
 impl<E: JubjubEngine> Copy for AssetType<E> { }
@@ -369,7 +391,7 @@ impl<E: JubjubEngine> Note<E> {
 
         // Write the asset type
         self.asset_type
-            .value_commitment_generator(params)
+            .asset_generator(params)
             .write(&mut note_contents)
             .unwrap();
 
@@ -493,7 +515,7 @@ fn test_value_commitment_generator() {
         let asset = &test_assets[i];
         let x = Fr::from_repr(FrRepr(test_asset_x[i])).expect("Test case value generator x invalid");
         let y = Fr::from_repr(FrRepr(test_asset_y[i])).expect("Test case value generator y invalid");
-        let p = asset.value_commitment_generator(&JUBJUB);
+        let p = asset.asset_generator(&JUBJUB);
 
         assert_eq!(p.to_xy().0, x);
         assert_eq!(p.to_xy().1, y);

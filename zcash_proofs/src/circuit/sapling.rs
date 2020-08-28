@@ -638,11 +638,11 @@ fn test_input_circuit_with_bls12_381() {
 
     let asset_type = *ASSET_TYPE_DEFAULT;
     for _ in 0..10 {
-        let value_commitment = ValueCommitment {
-            asset_generator: asset_type.value_commitment_generator(params),  
-            value: rng.next_u64(),
-            randomness: fs::Fs::random(rng),
-        };
+        let value_commitment = asset_type.value_commitment(
+            rng.next_u64(),
+            fs::Fs::random(rng),
+            params
+        );
 
         let nsk = fs::Fs::random(rng);
         let ak = edwards::Point::rand(rng, params).mul_by_cofactor(params);
@@ -818,11 +818,11 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
 
     let asset_type = *ASSET_TYPE_DEFAULT;
     for i in 0..10 {
-        let value_commitment = ValueCommitment {
-            asset_generator: asset_type.value_commitment_generator(params),
-            value: i,
-            randomness: fs::Fs::from_str(&(1000 * (i + 1)).to_string()).unwrap(),
-        };
+        let value_commitment = asset_type.value_commitment(
+            i,
+            fs::Fs::from_str(&(1000 * (i + 1)).to_string()).unwrap(),
+            params
+        );
 
         let nsk = fs::Fs::random(rng);
         let ak = edwards::Point::rand(rng, params).mul_by_cofactor(params);
@@ -976,14 +976,14 @@ fn test_output_circuit_with_bls12_381() {
     ]);
 
     for i in 0..31 {
-        let mut value_commitment = ValueCommitment {
-            asset_generator: ASSET_TYPE_DEFAULT.value_commitment_generator(params),
-            value: rng.next_u64(),
-            randomness: fs::Fs::random(rng),
-        };
+        let mut value_commitment = ASSET_TYPE_DEFAULT.value_commitment(
+            rng.next_u64(),
+            fs::Fs::random(rng),
+            params
+        );
         
         if i == 30 {
-            value_commitment.asset_generator = ASSET_TYPE_DEFAULT.value_commitment_generator(params)
+            value_commitment.asset_generator = ASSET_TYPE_DEFAULT.asset_generator(params)
                                                                  .negate();
         }
 

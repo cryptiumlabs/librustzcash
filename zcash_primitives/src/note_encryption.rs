@@ -573,7 +573,7 @@ mod tests {
             fs::{Fs, FsRepr},
             PrimeOrder, Unknown,
         },
-        primitives::{Diversifier, PaymentAddress, ValueCommitment},
+        primitives::{Diversifier, PaymentAddress},
     };
     use crypto_api_chachapoly::ChachaPolyIetf;
     use ff::{Field, PrimeField, PrimeFieldRepr};
@@ -761,11 +761,10 @@ mod tests {
 
         // Construct the value commitment for the proof instance
         let value = 100;
-        let value_commitment = ValueCommitment::<Bls12> {
-            asset_generator: ASSET_TYPE_DEFAULT.value_commitment_generator(&JUBJUB),
+        let value_commitment = ASSET_TYPE_DEFAULT.value_commitment(
             value,
-            randomness: Fs::random(&mut rng),
-        };
+            Fs::random(&mut rng),
+            &JUBJUB);
         let cv = value_commitment.cm(&JUBJUB).into();
 
         let note = pa
