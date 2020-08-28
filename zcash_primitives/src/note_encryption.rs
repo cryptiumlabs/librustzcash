@@ -237,7 +237,7 @@ fn prf_ock(
 ///
 /// let mut rng = OsRng;
 ///
-/// let diversifier = Diversifier([0; 11]);
+/// let diversifier = Diversifier([8; 11]);
 /// let pk_d = diversifier.g_d::<Bls12>(&JUBJUB).unwrap();
 /// let to = PaymentAddress::from_parts(diversifier, pk_d).unwrap();
 /// let ovk = OutgoingViewingKey([0; 32]);
@@ -385,7 +385,7 @@ fn parse_note_plaintext_without_memo(
     let asset_type = {
         let mut tmp = [0b0; 32];
         tmp.copy_from_slice(&plaintext[TYPELESS_NOTE_SIZE..TYPED_NOTE_SIZE]);
-        AssetType::<Bls12>::new(&tmp, &JUBJUB)
+        AssetType::<Bls12>::from_identifier(&tmp, &JUBJUB)?
     };
 
     let to = PaymentAddress::from_parts(diversifier, pk_d)?;
@@ -538,7 +538,7 @@ pub fn try_sapling_output_recovery(
     let asset_type = {
         let mut tmp = [0b0; 32];
         tmp.copy_from_slice(&plaintext[TYPELESS_NOTE_SIZE..TYPED_NOTE_SIZE]);
-        AssetType::<Bls12>::new(&tmp, &JUBJUB)
+        AssetType::<Bls12>::from_identifier(&tmp, &JUBJUB)?
     };
 
     let mut memo = [0u8; 512];
@@ -755,7 +755,7 @@ mod tests {
         [u8; ENC_CIPHERTEXT_SIZE],
         [u8; OUT_CIPHERTEXT_SIZE],
     ) {
-        let diversifier = Diversifier([0; 11]);
+        let diversifier = Diversifier([8; 11]);
         let pk_d = diversifier.g_d::<Bls12>(&JUBJUB).unwrap().mul(ivk, &JUBJUB);
         let pa = PaymentAddress::from_parts_unchecked(diversifier, pk_d);
 
@@ -846,7 +846,7 @@ mod tests {
 
     fn find_invalid_diversifier() -> Diversifier {
         // Find an invalid diversifier
-        let mut d = Diversifier([0; 11]);
+        let mut d = Diversifier([8; 11]);
         loop {
             for k in 0..11 {
                 d.0[k] = d.0[k].wrapping_add(1);
@@ -863,7 +863,7 @@ mod tests {
 
     fn find_valid_diversifier() -> Diversifier {
         // Find a different valid diversifier
-        let mut d = Diversifier([0; 11]);
+        let mut d = Diversifier([8; 11]);
         loop {
             for k in 0..11 {
                 d.0[k] = d.0[k].wrapping_add(1);
