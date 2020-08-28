@@ -744,7 +744,7 @@ fn test_input_circuit_with_bls12_381() {
             assert_eq!(cs.num_constraints(), 100637);
             assert_eq!(
                 cs.hash(),
-                "349faee4db9100f688c7f30eb3647faa9fdf935fb7b3484f34ccbc38f98d8ce6"
+                "34e4a634c80e4e4c6250e63b7855532e60b36d1371d4d7b1163218b69f09eb3d"
             );
 
             assert_eq!(cs.get("randomization of note commitment/x3/num"), cm);
@@ -932,7 +932,7 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
             assert_eq!(cs.num_constraints(), 100637);
             assert_eq!(
                 cs.hash(),
-                "349faee4db9100f688c7f30eb3647faa9fdf935fb7b3484f34ccbc38f98d8ce6"
+                "34e4a634c80e4e4c6250e63b7855532e60b36d1371d4d7b1163218b69f09eb3d"
             );
 
             assert_eq!(cs.get("randomization of note commitment/x3/num"), cm);
@@ -1037,7 +1037,7 @@ fn test_output_circuit_with_bls12_381() {
             assert_eq!(cs.num_constraints(), 31205);
             assert_eq!(
                 cs.hash(),
-                "b824303a9c3eba8f603ab4a554f36e6e5b724828469ccdb7c7699b721158430e"
+                "93e445d7858e98c7138558df341f020aedfe75893535025587d64731e244276a"
             );
 
             let asset_type = *ASSET_TYPE_DEFAULT;
