@@ -1,5 +1,8 @@
 use crate::librustzcash_sapling_compute_cm;
 use crate::librustzcash_sapling_compute_nf;
+use zcash_primitives::primitives::AssetType;
+use pairing::bls12_381::Bls12;
+use super::JUBJUB;
 
 #[test]
 fn notes() {
@@ -651,6 +654,7 @@ fn notes() {
         assert!(librustzcash_sapling_compute_cm(
             &tv.default_d,
             &tv.default_pk_d,
+            b"sO\x0e\xc5os\x1e\x02\xccs~ki=\xb5+\x82\x1fonL\xd7\xfe<vCS\xf2cf\x9f\xbe", // AssetType b'default'
             tv.note_v,
             &tv.note_r,
             &mut result
@@ -661,6 +665,7 @@ fn notes() {
         assert!(librustzcash_sapling_compute_nf(
             &tv.default_d,
             &tv.default_pk_d,
+            b"sO\x0e\xc5os\x1e\x02\xccs~ki=\xb5+\x82\x1fonL\xd7\xfe<vCS\xf2cf\x9f\xbe", // AssetType b'default'
             tv.note_v,
             &tv.note_r,
             &tv.ak,
