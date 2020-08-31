@@ -624,8 +624,7 @@ fn test_input_circuit_with_bls12_381() {
     use zcash_primitives::{
         jubjub::{edwards, fs, JubjubBls12},
         pedersen_hash,
-        primitives::{Diversifier, Note, ProofGenerationKey},
-        ASSET_TYPE_DEFAULT,
+        primitives::{AssetType, Diversifier, Note, ProofGenerationKey},
     };
 
     let params = &JubjubBls12::new();
@@ -636,14 +635,21 @@ fn test_input_circuit_with_bls12_381() {
 
     let tree_depth = 32;
 
-    let asset_type = *ASSET_TYPE_DEFAULT;
-    for _ in 0..10 {
-        let value_commitment = asset_type.value_commitment(
+    for i in 0..400 {
+        let asset_type = if i < 10 {  
+            AssetType::<Bls12>::new(b"default", params)
+        } else {
+            AssetType::<Bls12>::new(i.to_string().as_bytes(), params)
+        };
+        let mut value_commitment = asset_type.value_commitment(
             rng.next_u64(),
             fs::Fs::random(rng),
             params
         );
 
+        if i >= 200 {
+            value_commitment.asset_generator = value_commitment.asset_generator.negate();
+        }
         let nsk = fs::Fs::random(rng);
         let ak = edwards::Point::rand(rng, params).mul_by_cofactor(params);
 
@@ -740,15 +746,21 @@ fn test_input_circuit_with_bls12_381() {
 
             instance.synthesize(&mut cs).unwrap();
 
-            assert!(cs.is_satisfied());
+            if i < 200 {
+                assert!(cs.is_satisfied());
+            } else {
+                assert!(!cs.is_satisfied());
+            }
             assert_eq!(cs.num_constraints(), 100637);
             assert_eq!(
                 cs.hash(),
                 "34e4a634c80e4e4c6250e63b7855532e60b36d1371d4d7b1163218b69f09eb3d"
             );
-
-            assert_eq!(cs.get("randomization of note commitment/x3/num"), cm);
-
+            if i < 200 {
+                assert_eq!(cs.get("randomization of note commitment/x3/num"), cm);
+            } else {
+                assert_ne!(cs.get("randomization of note commitment/x3/num"), cm);
+            }
             assert_eq!(cs.num_inputs(), 8);
             assert_eq!(cs.get_input(0, "ONE"), Fr::one());
             assert_eq!(cs.get_input(1, "rk/x/input variable"), rk.0);
@@ -762,8 +774,12 @@ fn test_input_circuit_with_bls12_381() {
                 expected_value_cm.1
             );
             assert_eq!(cs.get_input(5, "anchor/input variable"), cur);
-            assert_eq!(cs.get_input(6, "pack nullifier/input 0"), expected_nf[0]);
-            assert_eq!(cs.get_input(7, "pack nullifier/input 1"), expected_nf[1]);
+            if i < 200 {
+                assert_eq!(cs.get_input(6, "pack nullifier/input 0"), expected_nf[0]);
+                assert_eq!(cs.get_input(7, "pack nullifier/input 1"), expected_nf[1]);
+            } else {
+                assert_ne!(cs.get_input(6, "pack nullifier/input 0"), expected_nf[0]);
+            }
         }
     }
 }
@@ -778,8 +794,7 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
     use zcash_primitives::{
         jubjub::{edwards, fs, JubjubBls12},
         pedersen_hash,
-        primitives::{Diversifier, Note, ProofGenerationKey},
-        ASSET_TYPE_DEFAULT,
+        primitives::{AssetType, Diversifier, Note, ProofGenerationKey},
     };
 
     let params = &JubjubBls12::new();
@@ -791,32 +806,31 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
     let tree_depth = 32;
 
     let expected_cm_xs = vec![
-        "43821661663052659750276289184181083197337192946256245809816728673021647664276",
-        "7220807656052227578299730541645543434083158611414003423211850718229633594616",
-        "13239753550660714843257636471668037031928211668773449453628093339627668081697",
-        "10900524635678389360790699587556574797582192824300145558807405770494079767974",
-        "1411013767457690636461779630023011774660680126764323588543800715293173598850",
-        "32334206652383066267661379202183359608706535021387905923603014648832344657662",
-        "20206750741605167608500278423400565295188703622528437817438897624149653579380",
-        "46716485782200334735478719487356079850582051575003452698983255860512578229998",
-        "31221372899739042781372142393132358519434268512685538373976981051223051220367",
-        "18269767207277008186871145355531741929166733260352590789136389380124992250945",
-    ];
-
+        "15274760159508878651789682992925045402656388195689586056903525226511870631006",
+        "17926082480702379779301751040578316677060182517930108360303758506447415843229",
+        "47560733217722603616763811825500591868568811326811130069535870262273364981945",
+        "3800891689291852208719409763066191375952446148569504124915840587177301316887",
+        "42605451358726896269346670960800907068736580931770467343442333651979812783507",
+        "2186124196248736405363923904916329765421958395459957351012037099196644523519",
+        "1141914194379178008776608799121446552214386159445356778422457950073807217391",
+        "4723282540978794624483635488138659467675602905263923545920612233258386488162",
+        "9817985978230076566482131380463677459892992710371329861360645363311468893053",
+        "27618789340710350120647137095252986938132361388195675764406370494688910938013",
+        ];
     let expected_cm_ys = vec![
-        "27630722367128086497290371604583225252915685718989450292520883698391703910",
-        "23310648738313092772044712773481584369462075017189681529702825235349449805260",
-        "25709635353183537915646348052945798827495141780341329896098121888376871589480",
-        "10516315852014492141081718791576479298042117442649432716255936672048164184691",
-        "23970713991179488695004801139667700217127937225554773561645815034212389459772",
-        "3256052161046564597126736968199320852691566092694819239485673781545479548450",
-        "18887250722195819674378865377623103071236046274361890247643850134985809137409",
-        "36501156873031641173054592888886902104303750771545647842488588827138867116570",
-        "21927526310070011864833939629345235038589128172309792087590183778192091594775",
-        "32959334601512756708397683646222389414681003290313255304927423560477040775488",
-    ];
+        "34821791232396287888199995100305255761362584209078006239735148846881442279277",
+        "25119990066174545608121950753413857831099772082356729649061420500567639159355",
+        "37379068700729686079521798425830021519833420633231595656391703260880647751299",
+        "41866535334944468208261223722134220321702695454463459117958311496151517396608",
+        "22815243378235771837066051140494563507512924813701395974049305004556621752999",
+        "32580943391199462206001867000285792160642911175912464838584939697793150575579",
+        "19466322163466228937035549603042240330689838936758470332197790607062875140040",
+        "37409705443279116387495124812424670311932220465698221026006921521796611194301",
+        "4817145647901840172966045688653436033808505237142136464043537162611284452519",
+        "33112537425917174283144333017659536059363113223507009786626165162100944911092",
+        ];
 
-    let asset_type = *ASSET_TYPE_DEFAULT;
+    let asset_type = AssetType::<Bls12>::new(b"default", params);
     for i in 0..10 {
         let value_commitment = asset_type.value_commitment(
             i,
@@ -965,8 +979,7 @@ fn test_output_circuit_with_bls12_381() {
     use rand_xorshift::XorShiftRng;
     use zcash_primitives::{
         jubjub::{JubjubBls12, fs, edwards},
-        primitives::{Diversifier, ProofGenerationKey},
-        ASSET_TYPE_DEFAULT,
+        primitives::{AssetType, Diversifier, ProofGenerationKey},
     };
 
     let params = &JubjubBls12::new();
@@ -975,16 +988,20 @@ fn test_output_circuit_with_bls12_381() {
         0xe5,
     ]);
 
-    for i in 0..31 {
-        let mut value_commitment = ASSET_TYPE_DEFAULT.value_commitment(
+    for i in 0..400 {
+        let asset_type = if i < 10 {  
+            AssetType::<Bls12>::new(b"default", params)
+        } else {
+            AssetType::<Bls12>::new(i.to_string().as_bytes(), params)
+        };
+        let mut value_commitment = asset_type.value_commitment(
             rng.next_u64(),
             fs::Fs::random(rng),
             params
         );
         
-        if i == 30 {
-            value_commitment.asset_generator = ASSET_TYPE_DEFAULT.asset_generator(params)
-                                                                 .negate();
+        if i >= 200 {
+            value_commitment.asset_generator = value_commitment.asset_generator.negate();
         }
 
         let nsk = fs::Fs::random(rng);
@@ -1024,12 +1041,12 @@ fn test_output_circuit_with_bls12_381() {
                 payment_address: Some(payment_address.clone()),
                 commitment_randomness: Some(commitment_randomness),
                 esk: Some(esk.clone()),
-                asset_identifier: ASSET_TYPE_DEFAULT.identifier_bits(),
+                asset_identifier: asset_type.identifier_bits(),
             };
 
             instance.synthesize(&mut cs).unwrap();
 
-            if i < 30 {
+            if i < 200 {
                 assert!(cs.is_satisfied());
             } else {
                 assert!(!cs.is_satisfied());
@@ -1039,8 +1056,6 @@ fn test_output_circuit_with_bls12_381() {
                 cs.hash(),
                 "93e445d7858e98c7138558df341f020aedfe75893535025587d64731e244276a"
             );
-
-            let asset_type = *ASSET_TYPE_DEFAULT;
 
             let expected_cm = payment_address.create_note(
                 asset_type,
@@ -1069,7 +1084,7 @@ fn test_output_circuit_with_bls12_381() {
             );
             assert_eq!(cs.get_input(3, "epk/x/input variable"), expected_epk_xy.0);
             assert_eq!(cs.get_input(4, "epk/y/input variable"), expected_epk_xy.1);
-            if i < 30 {
+            if i < 200 {
                 assert_eq!(cs.get_input(5, "commitment/input variable"), expected_cm);
             }
         }
