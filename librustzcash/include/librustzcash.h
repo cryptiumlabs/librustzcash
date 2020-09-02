@@ -91,6 +91,7 @@ extern "C" {
     /// given the necessary witness information. It outputs `cv` (the value
     /// commitment) and `rk` (so that you don't have to compute it) along
     /// with the proof.
+    /// The `asset_identifier` parameter must be of length 32.
     bool librustzcash_sapling_spend_proof(
         void *ctx,
         const unsigned char *ak,
@@ -110,6 +111,7 @@ extern "C" {
     /// This function (using the proving context) constructs an Output
     /// proof given the necessary witness information. It outputs `cv`
     /// and the `zkproof`.
+    /// The `asset_identifier` parameter must be of length 32.
     bool librustzcash_sapling_output_proof(
         void *ctx,
         const unsigned char *esk,
@@ -124,9 +126,10 @@ extern "C" {
     /// This function (using the proving context) constructs a binding
     /// signature. You must provide the intended valueBalance so that
     /// we can internally check consistency.
+    /// The `asset_identifier` parameter must be of length 32.
     bool librustzcash_sapling_binding_sig(
         const void *ctx,
-        uint32_t assetType,
+        const unsigned char *asset_identifier,
         int64_t valueBalance,
         const unsigned char *sighash,
         unsigned char *result
@@ -165,9 +168,10 @@ extern "C" {
 
     /// Finally checks the validity of the entire Sapling
     /// transaction given valueBalance and the binding signature.
+    /// The `asset_identifier` parameter must be of length 32.
     bool librustzcash_sapling_final_check(
         void *ctx,
-        uint32_t assetType,
+        const unsigned char *asset_identifier,
         int64_t valueBalance,
         const unsigned char *bindingSig,
         const unsigned char *sighashValue
