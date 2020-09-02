@@ -21,32 +21,47 @@ pub struct AssetType<E: JubjubEngine> {
     _marker: PhantomData<E>,
 }
 
+// Abstract type representing an asset
 impl<E: JubjubEngine> AssetType<E> {
+    /// Create a new AssetType from a unique asset name
     pub fn new(
         name: &[u8], 
         params: &E::Params,
     ) -> AssetType::<E> {
+
+        // Check the personalization is acceptable length
         assert_eq!(constants::ASSET_IDENTIFIER_PERSONALIZATION.len(), 8);
+
+        // Create a new BLAKE2s state for deriving the asset identifier
         let mut blake2s_state = Blake2sParams::new()
             .hash_length(constants::ASSET_IDENTIFIER_LENGTH)
             .personal(constants::ASSET_IDENTIFIER_PERSONALIZATION)
             .to_state();
 
+        // Hash the random beacon and asset name
         blake2s_state.update(constants::GH_FIRST_BLOCK)
             .update(&name);
         
         loop {
             let h = blake2s_state.finalize();
+            
+            // If the hash state is a valid asset identifier, use it
             if AssetType::<E>::hash_to_point(h.as_array(), params).is_some() {
                 break AssetType::<E>{ identifier: *h.as_array(), _marker: PhantomData };
             }
+
+            // Otherwise, rehash the output into itself
             blake2s_state.update(h.as_ref());
         }
     }
+
+    // Attempt to hash an identifier to a curve point
     fn hash_to_point(
-        identifier: &[u8; 32], 
+        identifier: &[u8; ASSET_IDENTIFIER_LENGTH], 
         params: &E::Params,
     ) -> Option<edwards::Point<E, Unknown>> {
+
+        // Check the personalization is acceptable length
         assert_eq!(constants::VALUE_COMMITMENT_GENERATOR_PERSONALIZATION.len(), 8);
 
         // Check to see that scalar field is 255 bits
@@ -59,24 +74,33 @@ impl<E: JubjubEngine> AssetType<E> {
             .update(identifier)
             .finalize();
  
+        // Check to see if the BLAKE2s hash of the identifier is on the curve
         if let Ok(p) = edwards::Point::<E, _>::read(h.as_ref(), params) {
+            // Check to see if the hashed point is small order
             if p.mul_by_cofactor(params) != edwards::Point::zero() {
+                // If not small order, return *without* clearing the cofactor
                 return Some(p);
             }
         } 
-        None
+        None // invalid asset identifier
     }
+
+    /// Return the identifier of this asset type
     pub fn get_identifier(&self) -> &[u8; constants::ASSET_IDENTIFIER_LENGTH] {
         &self.identifier
     }
+
+    /// Attempt to construct an asset type from an existing asset identifier
     pub fn from_identifier(
         identifier : &[u8 ; constants::ASSET_IDENTIFIER_LENGTH],
         params: &E::Params,
     ) -> Option<AssetType::<E>> {
+        
+        // Attempt to hash to point
         if AssetType::<E>::hash_to_point(identifier, params).is_some() {
             Some(AssetType::<E>{ identifier : *identifier, _marker: PhantomData })
         } else {
-            None
+            None // invalid asset identifier
         }
     }
 
@@ -97,6 +121,7 @@ impl<E: JubjubEngine> AssetType<E> {
         self.asset_generator(params).mul_by_cofactor(params)
     }
 
+    /// Get the asset identifier as a vector of bools
     pub fn identifier_bits(&self) -> Vec<Option<bool>> {
         self.get_identifier()
             .iter()
@@ -104,6 +129,7 @@ impl<E: JubjubEngine> AssetType<E> {
             .collect()
     }
     
+    /// Construct a value commitment from given value and randomness
     pub fn value_commitment(
         &self,
         value: u64,
@@ -149,7 +175,7 @@ impl<E: JubjubEngine> ValueCommitment<E> {
     ) -> edwards::Point<E, PrimeOrder>
     {
         self.asset_generator
-            .mul_by_cofactor(params)
+            .mul_by_cofactor(params) // clear cofactor before using
             .mul(self.value, params)
             .add(
                 &params
@@ -391,7 +417,7 @@ impl<E: JubjubEngine> Note<E> {
 
         // Write the asset type
         self.asset_type
-            .asset_generator(params)
+            .asset_generator(params) // Cofactor not cleared
             .write(&mut note_contents)
             .unwrap();
 
