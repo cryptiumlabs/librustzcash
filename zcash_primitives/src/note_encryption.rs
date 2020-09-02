@@ -7,7 +7,7 @@ use crate::{
         PrimeOrder, ToUniform, Unknown,
     },
     primitives::{AssetType, Diversifier, Note, PaymentAddress},
-    constants::ASSET_TYPE_LENGTH, 
+    constants::ASSET_IDENTIFIER_LENGTH, 
 };
 use blake2b_simd::{Hash as Blake2bHash, Params as Blake2bParams};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -33,7 +33,7 @@ const TYPELESS_NOTE_SIZE: usize = ( // in bytes
 
 const TYPED_NOTE_SIZE: usize = ( // in bytes
     TYPELESS_NOTE_SIZE + // original Sapling note size COMPACT_NOTE_SIZE
-    ASSET_TYPE_LENGTH // asset_type 32 byte string
+    ASSET_IDENTIFIER_LENGTH // asset_type 32 byte string
 );
 
 const NOTE_PLAINTEXT_SIZE: usize = TYPED_NOTE_SIZE + 512;

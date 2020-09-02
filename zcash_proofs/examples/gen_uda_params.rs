@@ -38,7 +38,7 @@ fn main() {
             payment_address: None,
             commitment_randomness: None,
             esk: None,
-            asset_identifier: vec![None; constants::ASSET_TYPE_LENGTH*8],
+            asset_identifier: vec![None; constants::ASSET_IDENTIFIER_LENGTH*8],
         },
         &mut rng,
     )

@@ -1,4 +1,8 @@
-//! Various constants used by the Zcash primitives.
+//! Various constants used by the MASP primitives.
+
+/// The constants have been systematically changed:
+/// Wherever a personalization began with "Zcash",
+/// it now begins with "MASP_" (yielding multiple _ sometimes)
 
 /// First 64 bytes of the BLAKE2s input during group hash.
 /// This is chosen to be some random string that we couldn't have anticipated when we designed
@@ -34,5 +38,8 @@ pub const VALUE_COMMITMENT_RANDOMNESS_PERSONALIZATION: &[u8; 8] = b"MASP__r_";
 /// BLAKE2s Personalization for the nullifier position generator (for computing rho)
 pub const NULLIFIER_POSITION_IN_TREE_GENERATOR_PERSONALIZATION: &[u8; 8] = b"MASP__J_";
 
-pub const ASSET_TYPE_LENGTH : usize = 32;
-pub const ASSET_TYPE_PERSONALIZATION: &[u8; 8] = b"MASP__t_";
+/// Length in bytes of the asset identifier
+pub const ASSET_IDENTIFIER_LENGTH : usize = 32;
+
+/// BLAKE2s Personalization for deriving asset identifier from asset name
+pub const ASSET_IDENTIFIER_PERSONALIZATION: &[u8; 8] = b"MASP__t_";

@@ -17,7 +17,7 @@ use std::marker::PhantomData;
 
 #[derive(Debug)]
 pub struct AssetType<E: JubjubEngine> {
-    identifier: [u8; constants::ASSET_TYPE_LENGTH], //32 byte asset type preimage
+    identifier: [u8; constants::ASSET_IDENTIFIER_LENGTH], //32 byte asset type preimage
     _marker: PhantomData<E>,
 }
 
@@ -26,10 +26,10 @@ impl<E: JubjubEngine> AssetType<E> {
         name: &[u8], 
         params: &E::Params,
     ) -> AssetType::<E> {
-        assert_eq!(constants::ASSET_TYPE_PERSONALIZATION.len(), 8);
+        assert_eq!(constants::ASSET_IDENTIFIER_PERSONALIZATION.len(), 8);
         let mut blake2s_state = Blake2sParams::new()
-            .hash_length(constants::ASSET_TYPE_LENGTH)
-            .personal(constants::ASSET_TYPE_PERSONALIZATION)
+            .hash_length(constants::ASSET_IDENTIFIER_LENGTH)
+            .personal(constants::ASSET_IDENTIFIER_PERSONALIZATION)
             .to_state();
 
         blake2s_state.update(constants::GH_FIRST_BLOCK)
@@ -66,11 +66,11 @@ impl<E: JubjubEngine> AssetType<E> {
         } 
         None
     }
-    pub fn get_identifier(&self) -> &[u8; constants::ASSET_TYPE_LENGTH] {
+    pub fn get_identifier(&self) -> &[u8; constants::ASSET_IDENTIFIER_LENGTH] {
         &self.identifier
     }
     pub fn from_identifier(
-        identifier : &[u8 ; constants::ASSET_TYPE_LENGTH],
+        identifier : &[u8 ; constants::ASSET_IDENTIFIER_LENGTH],
         params: &E::Params,
     ) -> Option<AssetType::<E>> {
         if AssetType::<E>::hash_to_point(identifier, params).is_some() {
