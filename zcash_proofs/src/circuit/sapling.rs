@@ -90,6 +90,7 @@ fn expose_value_commitment<E, CS>(
         cs.namespace(|| "unpack asset_generator")
     )?;
 
+    // Clear the cofactor of the asset generator, producing the value commitment generator
     let asset_generator = asset_generator.double(cs.namespace(|| "asset_generator first doubling"), params)?;
     let asset_generator = asset_generator.double(cs.namespace(|| "asset_generator second doubling"), params)?;
     let asset_generator = asset_generator.double(cs.namespace(|| "asset_generator third doubling"), params)?;
@@ -445,13 +446,16 @@ impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
         // asset_generator || value || g_d || pk_d
         let mut note_contents = vec![];
 
+        // Reserve 256 bits for the preimage
         let mut asset_generator_preimage = Vec::with_capacity(256);
 
+        // Ensure the input identifier is 32 bytes
         assert_eq!(256, self.asset_identifier.len());
 
         for (i, bit) in self.asset_identifier.iter().enumerate() { 
             let cs = &mut cs.namespace(|| format!("witness asset type bit {}", i));
-
+            
+            //  Witness each bit of the asset identifier
             let asset_identifier_preimage_bit = boolean::Boolean::from(boolean::AllocatedBit::alloc(
                 cs.namespace(|| "asset type bit"),
                 *bit,
@@ -461,8 +465,10 @@ impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
             asset_generator_preimage.push(asset_identifier_preimage_bit.clone());
         }
 
+        // Ensure the preimage of the generator is 32 bytes
         assert_eq!(256, asset_generator_preimage.len());
 
+        // Compute the asset generator from the asset identifier
         let asset_generator_image = blake2s::blake2s(
             cs.namespace(|| "value base computation"),
             &asset_generator_preimage,
@@ -476,7 +482,10 @@ impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
             self.params,
         )?;
 
+        // Ensure the witnessed asset generator is 32 bytes
         assert_eq!(256, asset_generator_bits.len());
+        
+        // Ensure the computed asset generator is 32 bytes
         assert_eq!(256, asset_generator_image.len());
         
         // Check integrity of the asset generator
@@ -494,10 +503,8 @@ impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
                 asset_generator_image_bit
             )?;
         }
-        // TODO: verify that edwards::Point::<E, _>::read and ecc::EdwardsPoint
-        // are always strict "inverse" 
 
-        // Place the asset type in the note
+        // Place the asset generator in the note commitment
         note_contents.extend(asset_generator_bits);
 
         // Place the value in the note
