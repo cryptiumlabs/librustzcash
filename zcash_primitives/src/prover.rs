@@ -58,7 +58,7 @@ pub trait TxProver {
         payment_address: PaymentAddress<Bls12>,
         rcm: Fs,
         value: u64,
-        generator: AssetType<Bls12>,
+        asset_type: AssetType<Bls12>,
     ) -> ([u8; GROTH_PROOF_SIZE], edwards::Point<Bls12, Unknown>);
 
     /// Create the `bindingSig` for a Sapling transaction. All calls to

@@ -57,7 +57,7 @@ impl<E: JubjubEngine> AssetType<E> {
 
     // Attempt to hash an identifier to a curve point
     fn hash_to_point(
-        identifier: &[u8; ASSET_IDENTIFIER_LENGTH], 
+        identifier: &[u8; constants::ASSET_IDENTIFIER_LENGTH], 
         params: &E::Params,
     ) -> Option<edwards::Point<E, Unknown>> {
 
