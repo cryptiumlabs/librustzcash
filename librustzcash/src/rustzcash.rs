@@ -753,7 +753,7 @@ pub extern "C" fn librustzcash_sapling_multi_final_check(
     ctx: *mut SaplingVerificationContext,
     asset_identifiers: *const c_uchar,
     value_balances: *const i64,
-    asset_count: usize,
+    asset_count: size_t,
     binding_sig: *const [c_uchar; 64],
     sighash_value: *const [c_uchar; 32],
 ) -> bool {
@@ -1023,7 +1023,7 @@ pub extern "C" fn librustzcash_sapling_single_binding_sig(
 fn collect_assets_and_values(
     asset_identifiers: *const c_uchar,
     value_balances: *const i64,
-    asset_count: usize,
+    asset_count: size_t,
 ) -> Option<Vec<(AssetType::<Bls12>, i64)>> 
 {
     use std::convert::TryInto;
@@ -1052,7 +1052,7 @@ pub extern "C" fn librustzcash_sapling_multi_binding_sig(
     ctx: *const SaplingProvingContext,
     asset_identifiers: *const c_uchar,
     value_balances: *const i64,
-    asset_count: usize,
+    asset_count: size_t,
     sighash: *const [c_uchar; 32],
     result: *mut [c_uchar; 64],
 ) -> bool {
