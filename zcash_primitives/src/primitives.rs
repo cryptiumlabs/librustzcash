@@ -11,13 +11,20 @@ use crate::pedersen_hash::{pedersen_hash, Personalization};
 use byteorder::{LittleEndian, WriteBytesExt};
 
 use crate::jubjub::{edwards, FixedGenerators, JubjubEngine, JubjubParams, PrimeOrder, Unknown};
+use crate::constants::{
+    ASSET_IDENTIFIER_LENGTH, 
+    ASSET_IDENTIFIER_PERSONALIZATION,
+    VALUE_COMMITMENT_GENERATOR_PERSONALIZATION,
+    GH_FIRST_BLOCK,
+};
 
 use blake2s_simd::Params as Blake2sParams;
 use std::marker::PhantomData;
 
 #[derive(Debug)]
 pub struct AssetType<E: JubjubEngine> {
-    identifier: [u8; constants::ASSET_IDENTIFIER_LENGTH], //32 byte asset type preimage
+    identifier: [u8; ASSET_IDENTIFIER_LENGTH], //32 byte asset type preimage
+    nonce: Option<u8>,
     _marker: PhantomData<E>,
 }
 
@@ -26,50 +33,54 @@ impl<E: JubjubEngine> AssetType<E> {
     /// Create a new AssetType from a unique asset name
     pub fn new(
         name: &[u8], 
+        nonce: Option<u8>,
         params: &E::Params,
     ) -> AssetType::<E> {
+        use std::slice::from_ref;
+        let nonce = nonce.unwrap_or(0b0);
 
         // Check the personalization is acceptable length
-        assert_eq!(constants::ASSET_IDENTIFIER_PERSONALIZATION.len(), 8);
+        assert_eq!(ASSET_IDENTIFIER_PERSONALIZATION.len(), 8);
 
         // Create a new BLAKE2s state for deriving the asset identifier
-        let mut blake2s_state = Blake2sParams::new()
-            .hash_length(constants::ASSET_IDENTIFIER_LENGTH)
-            .personal(constants::ASSET_IDENTIFIER_PERSONALIZATION)
-            .to_state();
-
-        // Hash the random beacon and asset name
-        blake2s_state.update(constants::GH_FIRST_BLOCK)
-            .update(&name);
+        let h = Blake2sParams::new()
+            .hash_length(ASSET_IDENTIFIER_LENGTH)
+            .personal(ASSET_IDENTIFIER_PERSONALIZATION)
+            .to_state()
+            .update(GH_FIRST_BLOCK)
+            .update(&name)
+            .update(from_ref(&nonce))
+            .finalize();
         
-        loop {
-            let h = blake2s_state.finalize();
-            
-            // If the hash state is a valid asset identifier, use it
-            if AssetType::<E>::hash_to_point(h.as_array(), params).is_some() {
-                break AssetType::<E>{ identifier: *h.as_array(), _marker: PhantomData };
+        // If the hash state is a valid asset identifier, use it
+        if AssetType::<E>::hash_to_point(h.as_array(), params).is_some() {
+            AssetType::<E> { 
+                identifier: *h.as_array(), 
+                nonce: Some(nonce),
+                _marker: PhantomData 
             }
-
-            // Otherwise, rehash the output into itself
-            blake2s_state.update(h.as_ref());
+        } else {
+            AssetType::<E>::new(name, 
+                Some(nonce.checked_add(1).unwrap()), 
+                params)
         }
     }
 
     // Attempt to hash an identifier to a curve point
     fn hash_to_point(
-        identifier: &[u8; constants::ASSET_IDENTIFIER_LENGTH], 
+        identifier: &[u8; ASSET_IDENTIFIER_LENGTH], 
         params: &E::Params,
     ) -> Option<edwards::Point<E, Unknown>> {
 
         // Check the personalization is acceptable length
-        assert_eq!(constants::VALUE_COMMITMENT_GENERATOR_PERSONALIZATION.len(), 8);
+        assert_eq!(VALUE_COMMITMENT_GENERATOR_PERSONALIZATION.len(), 8);
 
         // Check to see that scalar field is 255 bits
         assert!(E::Fr::NUM_BITS == 255);
 
         let h = Blake2sParams::new()
             .hash_length(32)
-            .personal(constants::VALUE_COMMITMENT_GENERATOR_PERSONALIZATION)
+            .personal(VALUE_COMMITMENT_GENERATOR_PERSONALIZATION)
             .to_state()
             .update(identifier)
             .finalize();
@@ -98,7 +109,10 @@ impl<E: JubjubEngine> AssetType<E> {
         
         // Attempt to hash to point
         if AssetType::<E>::hash_to_point(identifier, params).is_some() {
-            Some(AssetType::<E>{ identifier : *identifier, _marker: PhantomData })
+            Some(AssetType::<E> { 
+                identifier : *identifier, 
+                nonce: None,
+                _marker: PhantomData })
         } else {
             None // invalid asset identifier
         }
@@ -150,6 +164,7 @@ impl<E: JubjubEngine> Clone for AssetType<E> {
     fn clone(&self) -> Self { 
         AssetType::<E> {
             identifier: self.identifier,
+            nonce: self.nonce,
             _marker: PhantomData,
         }
     }
@@ -491,50 +506,50 @@ fn test_value_commitment_generator() {
     use crate::{JUBJUB};
     use pairing::bls12_381::{Bls12, Fr, FrRepr};
 
-    let test_assets = vec![ AssetType::<Bls12>::new(b"default", &JUBJUB),
-        AssetType::<Bls12>::new(b"", &JUBJUB), 
-        AssetType::<Bls12>::new(b"The Magic Words are Squeamish Ossifrage", &JUBJUB),
-        AssetType::<Bls12>::new(b"AliceToken", &JUBJUB),
-        AssetType::<Bls12>::new(b"BobToken", &JUBJUB),
-        AssetType::<Bls12>::new(b"EveToken", &JUBJUB),
-        AssetType::<Bls12>::new(b"JoeToken", &JUBJUB),
-        AssetType::<Bls12>::new(constants::GH_FIRST_BLOCK, &JUBJUB),
-        AssetType::<Bls12>::new(b"3.1415926535 8979323846 2643383279", &JUBJUB),
-        AssetType::<Bls12>::new(b"KT1000000000000000000000000000000000000", &JUBJUB),
-        AssetType::<Bls12>::new(b"KT1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ", &JUBJUB),
-        AssetType::<Bls12>::new(b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", &JUBJUB), 
-        AssetType::<Bls12>::new(b"\x01\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xf0", &JUBJUB),
+    let test_assets = vec![ AssetType::<Bls12>::new(b"default", None, &JUBJUB),
+        AssetType::<Bls12>::new(b"", None, &JUBJUB), 
+        AssetType::<Bls12>::new(b"The Magic Words are Squeamish Ossifrage", None, &JUBJUB),
+        AssetType::<Bls12>::new(b"AliceToken", None, &JUBJUB),
+        AssetType::<Bls12>::new(b"BobToken", None, &JUBJUB),
+        AssetType::<Bls12>::new(b"EveToken", None, &JUBJUB),
+        AssetType::<Bls12>::new(b"JoeToken", None, &JUBJUB),
+        AssetType::<Bls12>::new(constants::GH_FIRST_BLOCK, None, &JUBJUB),
+        AssetType::<Bls12>::new(b"3.1415926535 8979323846 2643383279", None, &JUBJUB),
+        AssetType::<Bls12>::new(b"KT1000000000000000000000000000000000000", None, &JUBJUB),
+        AssetType::<Bls12>::new(b"KT1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ", None, &JUBJUB),
+        AssetType::<Bls12>::new(b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", None, &JUBJUB), 
+        AssetType::<Bls12>::new(b"\x01\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xf0", None, &JUBJUB),
     ];
 
     let test_asset_x = vec![
-        [0x1c0b9dd3c1e32b2c, 0x93a209a48966adda, 0xf7b09627ec4e07c0, 0x0a239cdca7f9e681], 
-        [0x974b7dddeda05977, 0xd4ef35aa8c139b15, 0x2783bbcc28a9d7fe, 0x45e7b2c6a5c3f153], 
-        [0x93d0e2440d2b934d, 0xc7a2c7c7f149fa68, 0xef2f94225c0cbbe9, 0x40ecc9793c238921], 
-        [0x03b640150bbc55dc, 0x766875ef478d8a43, 0xf4eb51ebb5db7554, 0x59c27c261b952991], 
-        [0xdf43daeeb6530ea7, 0x846a4f2f4415c4c0, 0x922a8e3815bfaa90, 0x5bdcd8f5f0f586f6], 
-        [0x8facfbcffebe75dc, 0xbd3560878dc50c4a, 0x575f593adf330127, 0x70a8b8a4a03e0f4f], 
-        [0x8fcf1d2c3d11c244, 0x0d41c9c9c6b7d19c, 0x0444f7af697b4a22, 0x2d22190c7ba048f5], 
-        [0x0b8280a215d19f7b, 0xee140ffda101c9b5, 0x9ceefa770fd3d857, 0x5268a3740214b8d0], 
-        [0x476c52f34ed73c26, 0x62a4d4cdfe9bd17a, 0x2986bb6c9152ae15, 0x165f1e99cd4cb450], 
-        [0xb6a90e836ffef9b4, 0x0c88c466d77369ef, 0xbfc7290bea098a8c, 0x5fb353290e00c1d6], 
-        [0x31932dc7744b68ee, 0x1c7ef583d808a42d, 0x896d632b86fdc452, 0x1800b830e1d8f024], 
-        [0x9d790c36a597149c, 0xa9758d2c6cf58210, 0x2eaf907878d4ca14, 0x6bb34f8ce656aab2], 
-        [0xfeceaafb3a075a49, 0x5e5757eb70163a7e, 0x78c265970b9494f1, 0x44a601617fa4a106], 
-    ];
+        [0xd0d1cc06e2a8c701, 0xecab2b6a5908c621, 0x88abc909d17e51b7, 0x0ad06a441281655e], 
+        [0xe7af6c91597b7921, 0x8ade9e54dcac82ae, 0x5497c2ebb30f3a84, 0x7033a0446d8a9350], 
+        [0x4fda04bc89a203f8, 0xc55340f842dc0f89, 0xd5b2d35aee48d836, 0x3fefc22e7f0a1bd1], 
+        [0xd17196ec0caf78da, 0x29e1f0eef037540e, 0xfabf35ce1af8ef7b, 0x3af46478aeafe66a], 
+        [0x317ded582a091e9f, 0x3a33a3df191c68b4, 0x602ec7972517579c, 0x219f52d8610a5c83], 
+        [0x50c2c952795e3336, 0x63534ee96fb982b5, 0x63496060759c946f, 0x4276d7c083f357a7], 
+        [0x13768db213dc1b8e, 0xe1b98eb8b1a6ae98, 0x3c57c5f7b955b9cf, 0x0a4e19501f85d545], 
+        [0x4c32e4dab2ea62c2, 0x55c29e841191c66d, 0x8a856f4a677f542a, 0x3a63915c45a8c3b0], 
+        [0xe3287daa11aafce2, 0xf76cea51aa02d844, 0x181d743be7b7855a, 0x16ff2846ad7863ca], 
+        [0x2b9653afafc511a3, 0x5558627be2acb664, 0x361870285f691601, 0x62c5d9ce81a929e8], 
+        [0x6a293bb13f3c6503, 0x5706f289dd18dc1b, 0x306f3f7742c52ab7, 0x593b3c1ab9b56366], 
+        [0x25d73914273b4c8d, 0x6f71608af99a25d8, 0xe74e3635ff27eb28, 0x3841cc32274ca184], 
+        [0xd5a580695b6a1c1d, 0x037b0b789edb0468, 0x47e836a82bea2ef2, 0x48de21241d412e54], 
+        ];
     let test_asset_y = vec![
-        [0x557ca8bd3ab90632, 0x4abc28769a4b6eb2, 0x4b37d10d60b0ebc6, 0x3c18b8c104abd547], 
-        [0x5f62d7855be9a32b, 0x20d9e8762ab65412, 0xbbcb12f7149712e9, 0x6fc7b78767f782c8], 
-        [0x9cc454c1007f7786, 0x20859a2b98ffbfe2, 0xd414b0cdf860b271, 0x309b0581fee203fa], 
-        [0x49ee0fe075aa348a, 0xe89b7b327745ab64, 0xb5486988abd53c3, 0x3d67a89c0fcd3d3b], 
-        [0x2cb14ab7fff092e2, 0xd75e6ce86c5bd76f, 0x2858179d891a581d, 0x538bb4812e5c24e7], 
-        [0x916e70b879b2e823, 0xb90ab682ef9fb386, 0x601bb2033ef3e19, 0x10b7ef0c16b0c544], 
-        [0xa86469d4364fda4c, 0x19c7391e088b0e30, 0xa1e5454533dc3c78, 0x104bf76da39b6b0f], 
-        [0x95315488b7aaaadf, 0xba288f74d59cb97, 0x896dd7d03b708e44, 0x53ff4ed77c5b075], 
-        [0x182a5c8ab081b9e, 0x74072f96723f63a3, 0x30c1245bc40ac999, 0x63b136ba2fc1ef7f], 
-        [0xb4b96a2163e990da, 0x2d3a98bef113afff, 0xe79e33d49c57c055, 0x338bdf7465e11260], 
-        [0x95716344b39bba22, 0x8a167e7749867aa0, 0x1d6f8fa715af2856, 0x17c259e78e0532c1], 
-        [0x80ce09c051c482e2, 0x9f3e611ba2d3f2e3, 0xebace3e438c2ce2e, 0x5cf111c5d0499147], 
-        [0x3b7ffb7dd82ab26e, 0xc31288116810e8e0, 0x62ccbfde95d1c29, 0x55eccb099c2a442a], 
+        [0x9bcac7532f04e919, 0x961da8bf207edb87, 0xc3c627ca7d362f99, 0x5efe1928acc90404], 
+        [0xdb9e7c485fa2d6c9, 0xa6171e2bb3c5dd26, 0xe37c6f10d978ccd2, 0x6b21a02247f361e9], 
+        [0xaa97101ca0d34db2, 0x1815d4cbef70f8f1, 0x83a35895d1dbe23d, 0x5d119aa42dc87aab], 
+        [0xd5dc174369eaa894, 0x305bfecbe41ba747, 0xf88af722acb2535c, 0x36452685cea5789c], 
+        [0xe2c02a85e15f5d29, 0xb1782310436ade8b, 0x4f90be1af7ece152, 0x1fe001f090d63785], 
+        [0x71357d8dcfdc713, 0xbe63f8b3d5406d7c, 0xf40709a8cb71b14e, 0x654f65c12316c371], 
+        [0x223d151d5d6aae3a, 0xf2ee1b3949f098a6, 0x2114a1e2d31aa2a9, 0x400837888df6d6e2], 
+        [0xc7ec82a0d7469979, 0xa72cb6d5f5e41cc5, 0xc6695fc13a620157, 0x662c16464ba01ddd], 
+        [0xcf8bb99b7698dab7, 0x9bfeeba948524ac5, 0x21b316672fa0f7fa, 0x1a08da6e6dcee341], 
+        [0x5156307ea5c86dce, 0xb5f4b87dbafa641a, 0xb98d68e1313b4992, 0x6da0b1c852934297], 
+        [0x1d816301cb3ac4ee, 0xf38db6cbc7c9b57a, 0xb898f40a35634fa, 0x420fa77b59469d81], 
+        [0x106d91449269de4d, 0xb48c4043d6b5a31d, 0xeab7f990979121eb, 0x40ae4b1f9b7e1ecf], 
+        [0xe72a4f850a992e21, 0x8850787ee5ec4ebc, 0x5d02f5fc81d332de, 0x70ba444f140875eb], 
     ];
     
     for i in 0..13 {

@@ -837,7 +837,9 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
         "33112537425917174283144333017659536059363113223507009786626165162100944911092",
         ];
 
-    let asset_type = AssetType::<Bls12>::new(b"default", params);
+    let asset_type = AssetType::<Bls12>::from_identifier(
+        b"sO\x0e\xc5os\x1e\x02\xccs~ki=\xb5+\x82\x1fonL\xd7\xfe<vCS\xf2cf\x9f\xbe", // b'default' under repeated hashing
+        params);
     for i in 0..10 {
         let value_commitment = asset_type.value_commitment(
             i,

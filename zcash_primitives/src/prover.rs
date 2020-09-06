@@ -167,12 +167,21 @@ pub(crate) mod mock {
             ([0u8; GROTH_PROOF_SIZE], cv)
         }
 
-        fn binding_sig(
+        fn single_binding_sig(
             &self,
             _ctx: &mut Self::SaplingProvingContext,
-            _value_balance: Amount,
-            _sighash: &[u8; 32],
             _asset_type : AssetType<Bls12>,
+            _value_balance: i64,
+            _sighash: &[u8; 32],
+        ) -> Result<Signature, ()> {
+            Err(())
+        }
+
+        fn multi_binding_sig(
+            &self,
+            _ctx: &mut Self::SaplingProvingContext,
+            _assets_and_values : &[(AssetType<Bls12>,i64)],
+            _sighash: &[u8; 32],
         ) -> Result<Signature, ()> {
             Err(())
         }
