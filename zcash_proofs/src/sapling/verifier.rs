@@ -11,7 +11,7 @@ use zcash_primitives::{
     transaction::components::Amount,
 };
 
-use super::compute_value_balance;
+use super::masp_compute_value_balance;
 
 fn is_small_order<Order>(p: &edwards::Point<Bls12, Order>, params: &JubjubBls12) -> bool {
     p.double(params).double(params).double(params) == edwards::Point::zero()
@@ -172,10 +172,10 @@ impl SaplingVerificationContext {
     /// Perform consensus checks on the valueBalance and bindingSig parts of a
     /// Sapling transaction. All SpendDescriptions and OutputDescriptions must
     /// have been checked before calling this function.
-    pub fn final_check(
+    pub fn single_final_check(
         &self,
         asset_type: AssetType<Bls12>,
-        value_balance: Amount,
+        value_balance: i64,
         sighash_value: &[u8; 32],
         binding_sig: Signature,
         params: &JubjubBls12,
@@ -184,7 +184,7 @@ impl SaplingVerificationContext {
         let mut bvk = PublicKey(self.cv_sum.clone());
 
         // Compute value balance
-        let mut value_balance = match compute_value_balance(asset_type, value_balance, params) {
+        let mut value_balance = match masp_compute_value_balance(asset_type, value_balance, params) {
             Some(a) => a,
             None => return false,
         };
@@ -192,6 +192,54 @@ impl SaplingVerificationContext {
         // Subtract value_balance from current cv_sum to get final bvk
         value_balance = value_balance.negate();
         bvk.0 = bvk.0.add(&value_balance, params);
+
+        // Compute the signature's message for bvk/binding_sig
+        let mut data_to_be_signed = [0u8; 64];
+        bvk.0
+            .write(&mut data_to_be_signed[0..32])
+            .expect("bvk is 32 bytes");
+        (&mut data_to_be_signed[32..64]).copy_from_slice(&sighash_value[..]);
+
+        // Verify the binding_sig
+        bvk.verify(
+            &data_to_be_signed,
+            &binding_sig,
+            FixedGenerators::ValueCommitmentRandomness,
+            params,
+        )
+    }
+
+    /// Perform consensus checks on the valueBalance and bindingSig parts of a
+    /// Sapling transaction. All SpendDescriptions and OutputDescriptions must
+    /// have been checked before calling this function.
+    pub fn multi_final_check(
+        &self,
+        assets_and_values: &[(AssetType<Bls12>, i64)],
+        sighash_value: &[u8; 32],
+        binding_sig: Signature,
+        params: &JubjubBls12,
+    ) -> bool {
+        // Obtain current cv_sum from the context
+        let mut bvk = PublicKey(self.cv_sum.clone());
+
+        // Compute value balance
+        let value_balances = assets_and_values.iter().map( |(asset_type, value_balance)|
+            {
+                // Compute value balance for each asset
+                masp_compute_value_balance(*asset_type, *value_balance, params)
+                // Error for bad value balances (-INT64_MAX value) 
+                .ok_or(())
+            })
+            .collect::<Result<Vec<_>, _>>();
+
+        bvk.0 = match value_balances {
+            Ok(vb) => vb.iter().fold(bvk.0, |tmp, value_balance| 
+                {
+                    // Compute cv_sum minus sum of all value balances
+                    tmp.add(&value_balance.negate(), params)
+                }),
+            Err(_) => return false,
+        };
 
         // Compute the signature's message for bvk/binding_sig
         let mut data_to_be_signed = [0u8; 64];

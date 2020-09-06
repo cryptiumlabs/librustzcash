@@ -44,7 +44,7 @@ use std::os::windows::ffi::OsStringExt;
 
 use zcash_primitives::{
     block::equihash,
-    constants::CRH_IVK_PERSONALIZATION,
+    constants::{CRH_IVK_PERSONALIZATION, ASSET_IDENTIFIER_LENGTH},
     jubjub::{
         edwards,
         fs::{Fs, FsRepr},
@@ -398,7 +398,7 @@ pub extern "C" fn librustzcash_sapling_generate_r(result: *mut [c_uchar; 32]) {
 fn priv_get_note(
     diversifier: *const [c_uchar; 11],
     pk_d: *const [c_uchar; 32],
-    asset_identifier: *const [c_uchar; 32],
+    asset_identifier: *const [c_uchar; ASSET_IDENTIFIER_LENGTH],
     value: u64,
     r: *const [c_uchar; 32],
 ) -> Result<Note<Bls12>, ()> {
@@ -439,7 +439,7 @@ fn priv_get_note(
 pub extern "C" fn librustzcash_sapling_compute_nf(
     diversifier: *const [c_uchar; 11],
     pk_d: *const [c_uchar; 32],
-    asset_identifier: *const [c_uchar; 32],
+    asset_identifier: *const [c_uchar; ASSET_IDENTIFIER_LENGTH],
     value: u64,
     r: *const [c_uchar; 32],
     ak: *const [c_uchar; 32],
@@ -490,7 +490,7 @@ pub extern "C" fn librustzcash_sapling_compute_nf(
 pub extern "C" fn librustzcash_sapling_compute_cm(
     diversifier: *const [c_uchar; 11],
     pk_d: *const [c_uchar; 32],
-    asset_identifier: *const [c_uchar; 32],
+    asset_identifier: *const [c_uchar; ASSET_IDENTIFIER_LENGTH],
     value: u64,
     r: *const [c_uchar; 32],
     result: *mut [c_uchar; 32],
@@ -718,21 +718,17 @@ pub extern "C" fn librustzcash_sapling_check_output(
 /// Finally checks the validity of the entire Sapling transaction given
 /// valueBalance and the binding signature.
 #[no_mangle]
-pub extern "C" fn librustzcash_sapling_final_check(
+pub extern "C" fn librustzcash_sapling_single_final_check(
     ctx: *mut SaplingVerificationContext,
-    asset_identifier: *const [c_uchar; 32],
+    asset_identifier: *const [c_uchar; ASSET_IDENTIFIER_LENGTH],
     value_balance: i64,
     binding_sig: *const [c_uchar; 64],
     sighash_value: *const [c_uchar; 32],
 ) -> bool {
+
     let asset_type = match AssetType::<Bls12>::from_identifier(&unsafe{ *asset_identifier }, &JUBJUB) {
         Some(a) => a,
         None => return false,
-    };
-
-    let value_balance = match Amount::from_i64(value_balance) {
-        Ok(vb) => vb,
-        Err(()) => return false,
     };
 
     // Deserialize the signature
@@ -741,9 +737,40 @@ pub extern "C" fn librustzcash_sapling_final_check(
         Err(_) => return false,
     };
 
-    unsafe { &*ctx }.final_check(
+    unsafe { &*ctx }.single_final_check(
         asset_type,
         value_balance,
+        unsafe { &*sighash_value },
+        binding_sig,
+        &JUBJUB,
+    )
+}
+
+/// Finally checks the validity of the entire Sapling transaction given
+/// valueBalance and the binding signature.
+#[no_mangle]
+pub extern "C" fn librustzcash_sapling_multi_final_check(
+    ctx: *mut SaplingVerificationContext,
+    asset_identifiers: *const c_uchar,
+    value_balances: *const i64,
+    asset_count: usize,
+    binding_sig: *const [c_uchar; 64],
+    sighash_value: *const [c_uchar; 32],
+) -> bool {
+    // Collect the asset identifiers and values
+    let assets_and_values = match collect_assets_and_values(asset_identifiers, value_balances, asset_count){
+        Some(a) => a,
+        None => return false,
+    };
+
+    // Deserialize the signature
+    let binding_sig = match Signature::read(&(unsafe { &*binding_sig })[..]) {
+        Ok(sig) => sig,
+        Err(_) => return false,
+    };
+
+    unsafe { &*ctx }.multi_final_check(
+        &assets_and_values[..],
         unsafe { &*sighash_value },
         binding_sig,
         &JUBJUB,
@@ -871,7 +898,7 @@ pub extern "C" fn librustzcash_sapling_output_proof(
     esk: *const [c_uchar; 32],
     payment_address: *const [c_uchar; 43],
     rcm: *const [c_uchar; 32],
-    asset_identifier: *const [c_uchar; 32],
+    asset_identifier: *const [c_uchar; ASSET_IDENTIFIER_LENGTH],
     value: u64,
     cv: *mut [c_uchar; 32],
     zkproof: *mut [c_uchar; GROTH_PROOF_SIZE],
@@ -966,9 +993,9 @@ pub extern "C" fn librustzcash_sapling_spend_sig(
 /// You must provide the intended valueBalance so that we can internally check
 /// consistency.
 #[no_mangle]
-pub extern "C" fn librustzcash_sapling_binding_sig(
+pub extern "C" fn librustzcash_sapling_single_binding_sig(
     ctx: *const SaplingProvingContext,
-    asset_identifier: *const [c_uchar; 32],
+    asset_identifier: *const [c_uchar; ASSET_IDENTIFIER_LENGTH],
     value_balance: i64,
     sighash: *const [c_uchar; 32],
     result: *mut [c_uchar; 64],
@@ -978,13 +1005,65 @@ pub extern "C" fn librustzcash_sapling_binding_sig(
         None => return false,
     };
 
-    let value_balance = match Amount::from_i64(value_balance) {
-        Ok(vb) => vb,
-        Err(()) => return false,
+    // Sign
+    let sig = match unsafe { &*ctx }.single_binding_sig(asset_type, value_balance, unsafe { &*sighash }, &JUBJUB) {
+        Ok(s) => s,
+        Err(_) => return false,
+    };
+
+    // Write out signature
+    sig.write(&mut (unsafe { &mut *result })[..])
+        .expect("result should be 64 bytes");
+
+    true
+}
+
+/// Collect an array of asset identifiers and array of 
+/// asset values into a vector of asset types and values
+fn collect_assets_and_values(
+    asset_identifiers: *const c_uchar,
+    value_balances: *const i64,
+    asset_count: usize,
+) -> Option<Vec<(AssetType::<Bls12>, i64)>> 
+{
+    use std::convert::TryInto;
+    unsafe { 
+        std::slice::from_raw_parts(asset_identifiers, asset_count*ASSET_IDENTIFIER_LENGTH) 
+    }
+    .chunks_exact(ASSET_IDENTIFIER_LENGTH)
+    .zip(unsafe { 
+            std::slice::from_raw_parts(value_balances, asset_count)
+        })
+    .map(|(asset_identifier, value)|
+        AssetType::<Bls12>::from_identifier(
+            asset_identifier.try_into().expect("invalid asset id chunk"), 
+            &JUBJUB)
+            .map(|id| (id, *value))
+        )
+    .collect()
+}
+
+/// This function (using the proving context) constructs a multiple asset binding signature.
+///
+/// You must provide the intended valueBalance so that we can internally check
+/// consistency.
+#[no_mangle]
+pub extern "C" fn librustzcash_sapling_multi_binding_sig(
+    ctx: *const SaplingProvingContext,
+    asset_identifiers: *const c_uchar,
+    value_balances: *const i64,
+    asset_count: usize,
+    sighash: *const [c_uchar; 32],
+    result: *mut [c_uchar; 64],
+) -> bool {
+    // Collect the asset identifiers and values
+    let assets_and_values = match collect_assets_and_values(asset_identifiers, value_balances, asset_count){
+        Some(a) => a,
+        None => return false,
     };
 
     // Sign
-    let sig = match unsafe { &*ctx }.binding_sig(asset_type, value_balance, unsafe { &*sighash }, &JUBJUB) {
+    let sig = match unsafe { &*ctx }.multi_binding_sig(&assets_and_values[..], unsafe { &*sighash }, &JUBJUB) {
         Ok(s) => s,
         Err(_) => return false,
     };
@@ -1007,7 +1086,7 @@ pub extern "C" fn librustzcash_sapling_spend_proof(
     diversifier: *const [c_uchar; 11],
     rcm: *const [c_uchar; 32],
     ar: *const [c_uchar; 32],
-    asset_identifier: *const [c_uchar; 32],
+    asset_identifier: *const [c_uchar; ASSET_IDENTIFIER_LENGTH],
     value: u64,
     anchor: *const [c_uchar; 32],
     merkle_path: *const [c_uchar; 1 + 33 * SAPLING_TREE_DEPTH + 8],

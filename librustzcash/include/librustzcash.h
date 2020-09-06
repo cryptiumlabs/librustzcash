@@ -127,10 +127,23 @@ extern "C" {
     /// signature. You must provide the intended valueBalance so that
     /// we can internally check consistency.
     /// The `asset_identifier` parameter must be of length 32.
-    bool librustzcash_sapling_binding_sig(
+    bool librustzcash_sapling_single_binding_sig(
         const void *ctx,
         const unsigned char *asset_identifier,
         int64_t valueBalance,
+        const unsigned char *sighash,
+        unsigned char *result
+    );
+
+    /// This function (using the proving context) constructs a binding
+    /// signature. You must provide the intended valueBalances so that
+    /// we can internally check consistency.
+    /// Each `asset_identifier` parameter must be of length 32.
+    bool librustzcash_sapling_multi_binding_sig(
+        const void *ctx,
+        const unsigned char *asset_identifiers,
+        int64_t valueBalances[],
+        size_t asset_count,
         const unsigned char *sighash,
         unsigned char *result
     );
@@ -169,10 +182,22 @@ extern "C" {
     /// Finally checks the validity of the entire Sapling
     /// transaction given valueBalance and the binding signature.
     /// The `asset_identifier` parameter must be of length 32.
-    bool librustzcash_sapling_final_check(
+    bool librustzcash_sapling_single_final_check(
         void *ctx,
         const unsigned char *asset_identifier,
         int64_t valueBalance,
+        const unsigned char *bindingSig,
+        const unsigned char *sighashValue
+    );
+
+    /// Finally checks the validity of the entire Sapling
+    /// transaction given valueBalance and the binding signature.
+    /// Each `asset_identifier` parameter must be of length 32.
+    bool librustzcash_sapling_multi_final_check(
+        void *ctx,
+        const unsigned char *asset_identifiers,
+        int64_t valueBalances[],
+        size_t asset_count,
         const unsigned char *bindingSig,
         const unsigned char *sighashValue
     );

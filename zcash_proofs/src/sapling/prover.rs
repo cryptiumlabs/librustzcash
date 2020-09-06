@@ -16,7 +16,7 @@ use zcash_primitives::{
     transaction::components::Amount,
 };
 
-use super::compute_value_balance;
+use super::masp_compute_value_balance;
 use crate::circuit::sapling::{Output, Spend};
 
 /// A context object for creating the Sapling components of a Zcash transaction.
@@ -251,10 +251,10 @@ impl SaplingProvingContext {
 
     /// Create the bindingSig for a Sapling transaction. All calls to spend_proof()
     /// and output_proof() must be completed before calling this function.
-    pub fn binding_sig(
+    pub fn single_binding_sig(
         &self,
         asset_type: AssetType<Bls12>,
-        value_balance: Amount,
+        value_balance: i64,
         sighash: &[u8; 32],
         params: &JubjubBls12,
     ) -> Result<Signature, ()> {
@@ -272,7 +272,7 @@ impl SaplingProvingContext {
         // against our derived bvk.
         {
             // Compute value balance
-            let mut value_balance = match compute_value_balance(asset_type, value_balance, params) {
+            let mut value_balance = match masp_compute_value_balance(asset_type, value_balance, params) {
                 Some(a) => a,
                 None => return Err(()),
             };
@@ -312,7 +312,7 @@ impl SaplingProvingContext {
     /// in one transaction
     pub fn multi_binding_sig(
         &self,
-        asset_and_value: &[ (AssetType<Bls12>, Amount) ],
+        asset_and_value: &[ (AssetType<Bls12>, i64) ],
         sighash: &[u8; 32],
         params: &JubjubBls12,
     ) -> Result<Signature, ()> {
@@ -328,10 +328,10 @@ impl SaplingProvingContext {
         // In order to check internal consistency, let's use the accumulated value
         // commitments (as the verifier would) and apply value_balance to compare
         // against our derived bvk.
-        let tmp = asset_and_value.iter().map( |(asset_type, value_balance)|
+        let value_balance = asset_and_value.iter().map( |(asset_type, value_balance)|
             {
                 // Compute value balance for each asset
-                compute_value_balance(*asset_type, *value_balance, params)
+                masp_compute_value_balance(*asset_type, *value_balance, params)
             })
             .try_fold(self.cv_sum.clone(), |tmp, value_balance| 
             {
@@ -341,7 +341,7 @@ impl SaplingProvingContext {
             }
         )?; 
         // The result should be the same, unless the provided valueBalance is wrong.
-        if bvk.0 != tmp {
+        if bvk.0 != value_balance {
             return Err(());
         }
 

@@ -186,13 +186,22 @@ impl TxProver for LocalTxProver {
         (zkproof, cv)
     }
 
-    fn binding_sig(
+    fn single_binding_sig(
         &self,
         ctx: &mut Self::SaplingProvingContext,
-        value_balance: Amount,
-        sighash: &[u8; 32],
         asset_type : AssetType<Bls12>,
+        value_balance: i64,
+        sighash: &[u8; 32],
     ) -> Result<Signature, ()> {
-        ctx.binding_sig(asset_type, value_balance, sighash, &JUBJUB)
+        ctx.single_binding_sig(asset_type, value_balance, sighash, &JUBJUB)
+    }
+
+    fn multi_binding_sig(
+        &self,
+        ctx: &mut Self::SaplingProvingContext,
+        assets_and_values : &[(AssetType<Bls12>, i64)],
+        sighash: &[u8; 32],
+    ) -> Result<Signature, ()> {
+        ctx.multi_binding_sig(assets_and_values, sighash, &JUBJUB)
     }
 }

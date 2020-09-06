@@ -31,6 +31,7 @@ rand_core = "0.5.1"
 zcash_history = { version = "0.0.1", path = "../zcash_history" }
 zcash_primitives = { version = "0.1.0", path = "../zcash_primitives" }
 zcash_proofs = { version = "0.1.0", path = "../zcash_proofs" }
+itertools = "0.9"
 
 [badges]
 maintenance = { status = "deprecated" }

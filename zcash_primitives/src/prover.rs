@@ -64,13 +64,20 @@ pub trait TxProver {
     /// Create the `bindingSig` for a Sapling transaction. All calls to
     /// [`TxProver::spend_proof`] and [`TxProver::output_proof`] must be completed before
     /// calling this function.
-    fn binding_sig(
+    fn single_binding_sig(
         &self,
         ctx: &mut Self::SaplingProvingContext,
-        value_balance: Amount,
-        sighash: &[u8; 32],
         asset_type: AssetType<Bls12>,
+        value_balance: i64,
+        sighash: &[u8; 32],
     ) -> Result<Signature, ()>;
+
+    fn multi_binding_sig(
+        &self,
+        ctx: &mut Self::SaplingProvingContext,
+        asset_and_value: &[ (AssetType<Bls12>, i64) ],
+        sighash: &[u8; 32],
+    ) -> Result<Signature, ()>; 
 }
 
 #[cfg(test)]
