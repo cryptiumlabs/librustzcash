@@ -39,7 +39,7 @@ pub const VALUE_COMMITMENT_RANDOMNESS_PERSONALIZATION: &[u8; 8] = b"MASP__r_";
 pub const NULLIFIER_POSITION_IN_TREE_GENERATOR_PERSONALIZATION: &[u8; 8] = b"MASP__J_";
 
 /// Length in bytes of the asset identifier
-pub const ASSET_IDENTIFIER_LENGTH : usize = 32;
+pub const ASSET_IDENTIFIER_LENGTH: usize = 32;
 
 /// BLAKE2s Personalization for deriving asset identifier from asset name
 pub const ASSET_IDENTIFIER_PERSONALIZATION: &[u8; 8] = b"MASP__t_";

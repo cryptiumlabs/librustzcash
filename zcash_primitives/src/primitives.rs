@@ -10,13 +10,11 @@ use crate::pedersen_hash::{pedersen_hash, Personalization};
 
 use byteorder::{LittleEndian, WriteBytesExt};
 
-use crate::jubjub::{edwards, FixedGenerators, JubjubEngine, JubjubParams, PrimeOrder, Unknown};
 use crate::constants::{
-    ASSET_IDENTIFIER_LENGTH, 
-    ASSET_IDENTIFIER_PERSONALIZATION,
+    ASSET_IDENTIFIER_LENGTH, ASSET_IDENTIFIER_PERSONALIZATION, GH_FIRST_BLOCK,
     VALUE_COMMITMENT_GENERATOR_PERSONALIZATION,
-    GH_FIRST_BLOCK,
 };
+use crate::jubjub::{edwards, FixedGenerators, JubjubEngine, JubjubParams, PrimeOrder, Unknown};
 
 use blake2s_simd::Params as Blake2sParams;
 use std::marker::PhantomData;
@@ -31,11 +29,7 @@ pub struct AssetType<E: JubjubEngine> {
 // Abstract type representing an asset
 impl<E: JubjubEngine> AssetType<E> {
     /// Create a new AssetType from a unique asset name
-    pub fn new(
-        name: &[u8], 
-        nonce: Option<u8>,
-        params: &E::Params,
-    ) -> AssetType::<E> {
+    pub fn new(name: &[u8], nonce: Option<u8>, params: &E::Params) -> AssetType<E> {
         use std::slice::from_ref;
         let nonce = nonce.unwrap_or(0b0);
 
@@ -51,27 +45,24 @@ impl<E: JubjubEngine> AssetType<E> {
             .update(&name)
             .update(from_ref(&nonce))
             .finalize();
-        
+
         // If the hash state is a valid asset identifier, use it
         if AssetType::<E>::hash_to_point(h.as_array(), params).is_some() {
-            AssetType::<E> { 
-                identifier: *h.as_array(), 
+            AssetType::<E> {
+                identifier: *h.as_array(),
                 nonce: Some(nonce),
-                _marker: PhantomData 
+                _marker: PhantomData,
             }
         } else {
-            AssetType::<E>::new(name, 
-                Some(nonce.checked_add(1).unwrap()), 
-                params)
+            AssetType::<E>::new(name, Some(nonce.checked_add(1).unwrap()), params)
         }
     }
 
     // Attempt to hash an identifier to a curve point
     fn hash_to_point(
-        identifier: &[u8; ASSET_IDENTIFIER_LENGTH], 
+        identifier: &[u8; ASSET_IDENTIFIER_LENGTH],
         params: &E::Params,
     ) -> Option<edwards::Point<E, Unknown>> {
-
         // Check the personalization is acceptable length
         assert_eq!(VALUE_COMMITMENT_GENERATOR_PERSONALIZATION.len(), 8);
 
@@ -84,7 +75,7 @@ impl<E: JubjubEngine> AssetType<E> {
             .to_state()
             .update(identifier)
             .finalize();
- 
+
         // Check to see if the BLAKE2s hash of the identifier is on the curve
         if let Ok(p) = edwards::Point::<E, _>::read(h.as_ref(), params) {
             // Check to see if the hashed point is small order
@@ -92,7 +83,7 @@ impl<E: JubjubEngine> AssetType<E> {
                 // If not small order, return *without* clearing the cofactor
                 return Some(p);
             }
-        } 
+        }
         None // invalid asset identifier
     }
 
@@ -103,35 +94,29 @@ impl<E: JubjubEngine> AssetType<E> {
 
     /// Attempt to construct an asset type from an existing asset identifier
     pub fn from_identifier(
-        identifier : &[u8 ; constants::ASSET_IDENTIFIER_LENGTH],
+        identifier: &[u8; constants::ASSET_IDENTIFIER_LENGTH],
         params: &E::Params,
-    ) -> Option<AssetType::<E>> {
-        
+    ) -> Option<AssetType<E>> {
         // Attempt to hash to point
         if AssetType::<E>::hash_to_point(identifier, params).is_some() {
-            Some(AssetType::<E> { 
-                identifier : *identifier, 
+            Some(AssetType::<E> {
+                identifier: *identifier,
                 nonce: None,
-                _marker: PhantomData })
+                _marker: PhantomData,
+            })
         } else {
             None // invalid asset identifier
         }
     }
 
     /// Produces an asset generator without cofactor cleared
-    pub fn asset_generator(
-        &self,
-        params: &E::Params,
-    ) -> edwards::Point<E, Unknown> {
+    pub fn asset_generator(&self, params: &E::Params) -> edwards::Point<E, Unknown> {
         AssetType::<E>::hash_to_point(self.get_identifier(), params)
             .expect("AssetType internal identifier state inconsistent")
     }
 
     /// Produces a value commitment generator with cofactor cleared
-    pub fn value_commitment_generator(
-        &self,
-        params: &E::Params,
-    ) -> edwards::Point<E, PrimeOrder> {
+    pub fn value_commitment_generator(&self, params: &E::Params) -> edwards::Point<E, PrimeOrder> {
         self.asset_generator(params).mul_by_cofactor(params)
     }
 
@@ -142,7 +127,7 @@ impl<E: JubjubEngine> AssetType<E> {
             .flat_map(|&v| (0..8).map(move |i| Some((v >> i) & 1 == 1)))
             .collect()
     }
-    
+
     /// Construct a value commitment from given value and randomness
     pub fn value_commitment(
         &self,
@@ -158,10 +143,10 @@ impl<E: JubjubEngine> AssetType<E> {
     }
 }
 
-impl<E: JubjubEngine> Copy for AssetType<E> { }
+impl<E: JubjubEngine> Copy for AssetType<E> {}
 
 impl<E: JubjubEngine> Clone for AssetType<E> {
-    fn clone(&self) -> Self { 
+    fn clone(&self) -> Self {
         AssetType::<E> {
             identifier: self.identifier,
             nonce: self.nonce,
@@ -172,7 +157,7 @@ impl<E: JubjubEngine> Clone for AssetType<E> {
 
 impl<E: JubjubEngine> PartialEq for AssetType<E> {
     fn eq(&self, other: &Self) -> bool {
-        self.get_identifier() == other.get_identifier() 
+        self.get_identifier() == other.get_identifier()
     }
 }
 
@@ -184,11 +169,7 @@ pub struct ValueCommitment<E: JubjubEngine> {
 }
 
 impl<E: JubjubEngine> ValueCommitment<E> {
-    pub fn cm(
-        &self,
-        params: &E::Params
-    ) -> edwards::Point<E, PrimeOrder>
-    {
+    pub fn cm(&self, params: &E::Params) -> edwards::Point<E, PrimeOrder> {
         self.asset_generator
             .mul_by_cofactor(params) // clear cofactor before using
             .mul(self.value, params)
@@ -196,8 +177,8 @@ impl<E: JubjubEngine> ValueCommitment<E> {
                 &params
                     .generator(FixedGenerators::ValueCommitmentRandomness)
                     .mul(self.randomness, params),
-                    params,
-              )
+                params,
+            )
     }
 }
 
@@ -376,17 +357,14 @@ impl<E: JubjubEngine> PaymentAddress<E> {
         asset_type: AssetType<E>,
         value: u64,
         randomness: E::Fs,
-        params: &E::Params
-    ) -> Option<Note<E>>
-    {
-        self.g_d(params).map(|g_d| {
-            Note {
-                asset_type,
-                value: value,
-                r: randomness,
-                g_d: g_d,
-                pk_d: self.pk_d.clone()
-            }
+        params: &E::Params,
+    ) -> Option<Note<E>> {
+        self.g_d(params).map(|g_d| Note {
+            asset_type,
+            value: value,
+            r: randomness,
+            g_d: g_d,
+            pk_d: self.pk_d.clone(),
         })
     }
 }
@@ -447,7 +425,8 @@ impl<E: JubjubEngine> Note<E> {
         // Write pk_d
         self.pk_d.write(&mut note_contents).unwrap();
 
-        assert_eq!(note_contents.len(), 
+        assert_eq!(
+            note_contents.len(),
             32 + // asset_generator bytes
             32 + // g_d bytes 
             32 + // p_d bytes
@@ -503,7 +482,7 @@ impl<E: JubjubEngine> Note<E> {
 
 #[test]
 fn test_value_commitment_generator() {
-    use crate::{JUBJUB};
+    use crate::JUBJUB;
     use pairing::bls12_381::{Bls12, Fr, FrRepr};
 
     let test_assets = vec![ AssetType::<Bls12>::new(b"default", None, &JUBJUB),
@@ -522,40 +501,172 @@ fn test_value_commitment_generator() {
     ];
 
     let test_asset_x = vec![
-        [0xd0d1cc06e2a8c701, 0xecab2b6a5908c621, 0x88abc909d17e51b7, 0x0ad06a441281655e], 
-        [0xe7af6c91597b7921, 0x8ade9e54dcac82ae, 0x5497c2ebb30f3a84, 0x7033a0446d8a9350], 
-        [0x4fda04bc89a203f8, 0xc55340f842dc0f89, 0xd5b2d35aee48d836, 0x3fefc22e7f0a1bd1], 
-        [0xd17196ec0caf78da, 0x29e1f0eef037540e, 0xfabf35ce1af8ef7b, 0x3af46478aeafe66a], 
-        [0x317ded582a091e9f, 0x3a33a3df191c68b4, 0x602ec7972517579c, 0x219f52d8610a5c83], 
-        [0x50c2c952795e3336, 0x63534ee96fb982b5, 0x63496060759c946f, 0x4276d7c083f357a7], 
-        [0x13768db213dc1b8e, 0xe1b98eb8b1a6ae98, 0x3c57c5f7b955b9cf, 0x0a4e19501f85d545], 
-        [0x4c32e4dab2ea62c2, 0x55c29e841191c66d, 0x8a856f4a677f542a, 0x3a63915c45a8c3b0], 
-        [0xe3287daa11aafce2, 0xf76cea51aa02d844, 0x181d743be7b7855a, 0x16ff2846ad7863ca], 
-        [0x2b9653afafc511a3, 0x5558627be2acb664, 0x361870285f691601, 0x62c5d9ce81a929e8], 
-        [0x6a293bb13f3c6503, 0x5706f289dd18dc1b, 0x306f3f7742c52ab7, 0x593b3c1ab9b56366], 
-        [0x25d73914273b4c8d, 0x6f71608af99a25d8, 0xe74e3635ff27eb28, 0x3841cc32274ca184], 
-        [0xd5a580695b6a1c1d, 0x037b0b789edb0468, 0x47e836a82bea2ef2, 0x48de21241d412e54], 
-        ];
-    let test_asset_y = vec![
-        [0x9bcac7532f04e919, 0x961da8bf207edb87, 0xc3c627ca7d362f99, 0x5efe1928acc90404], 
-        [0xdb9e7c485fa2d6c9, 0xa6171e2bb3c5dd26, 0xe37c6f10d978ccd2, 0x6b21a02247f361e9], 
-        [0xaa97101ca0d34db2, 0x1815d4cbef70f8f1, 0x83a35895d1dbe23d, 0x5d119aa42dc87aab], 
-        [0xd5dc174369eaa894, 0x305bfecbe41ba747, 0xf88af722acb2535c, 0x36452685cea5789c], 
-        [0xe2c02a85e15f5d29, 0xb1782310436ade8b, 0x4f90be1af7ece152, 0x1fe001f090d63785], 
-        [0x71357d8dcfdc713, 0xbe63f8b3d5406d7c, 0xf40709a8cb71b14e, 0x654f65c12316c371], 
-        [0x223d151d5d6aae3a, 0xf2ee1b3949f098a6, 0x2114a1e2d31aa2a9, 0x400837888df6d6e2], 
-        [0xc7ec82a0d7469979, 0xa72cb6d5f5e41cc5, 0xc6695fc13a620157, 0x662c16464ba01ddd], 
-        [0xcf8bb99b7698dab7, 0x9bfeeba948524ac5, 0x21b316672fa0f7fa, 0x1a08da6e6dcee341], 
-        [0x5156307ea5c86dce, 0xb5f4b87dbafa641a, 0xb98d68e1313b4992, 0x6da0b1c852934297], 
-        [0x1d816301cb3ac4ee, 0xf38db6cbc7c9b57a, 0xb898f40a35634fa, 0x420fa77b59469d81], 
-        [0x106d91449269de4d, 0xb48c4043d6b5a31d, 0xeab7f990979121eb, 0x40ae4b1f9b7e1ecf], 
-        [0xe72a4f850a992e21, 0x8850787ee5ec4ebc, 0x5d02f5fc81d332de, 0x70ba444f140875eb], 
+        [
+            0xd0d1cc06e2a8c701,
+            0xecab2b6a5908c621,
+            0x88abc909d17e51b7,
+            0x0ad06a441281655e,
+        ],
+        [
+            0xe7af6c91597b7921,
+            0x8ade9e54dcac82ae,
+            0x5497c2ebb30f3a84,
+            0x7033a0446d8a9350,
+        ],
+        [
+            0x4fda04bc89a203f8,
+            0xc55340f842dc0f89,
+            0xd5b2d35aee48d836,
+            0x3fefc22e7f0a1bd1,
+        ],
+        [
+            0xd17196ec0caf78da,
+            0x29e1f0eef037540e,
+            0xfabf35ce1af8ef7b,
+            0x3af46478aeafe66a,
+        ],
+        [
+            0x317ded582a091e9f,
+            0x3a33a3df191c68b4,
+            0x602ec7972517579c,
+            0x219f52d8610a5c83,
+        ],
+        [
+            0x50c2c952795e3336,
+            0x63534ee96fb982b5,
+            0x63496060759c946f,
+            0x4276d7c083f357a7,
+        ],
+        [
+            0x13768db213dc1b8e,
+            0xe1b98eb8b1a6ae98,
+            0x3c57c5f7b955b9cf,
+            0x0a4e19501f85d545,
+        ],
+        [
+            0x4c32e4dab2ea62c2,
+            0x55c29e841191c66d,
+            0x8a856f4a677f542a,
+            0x3a63915c45a8c3b0,
+        ],
+        [
+            0xe3287daa11aafce2,
+            0xf76cea51aa02d844,
+            0x181d743be7b7855a,
+            0x16ff2846ad7863ca,
+        ],
+        [
+            0x2b9653afafc511a3,
+            0x5558627be2acb664,
+            0x361870285f691601,
+            0x62c5d9ce81a929e8,
+        ],
+        [
+            0x6a293bb13f3c6503,
+            0x5706f289dd18dc1b,
+            0x306f3f7742c52ab7,
+            0x593b3c1ab9b56366,
+        ],
+        [
+            0x25d73914273b4c8d,
+            0x6f71608af99a25d8,
+            0xe74e3635ff27eb28,
+            0x3841cc32274ca184,
+        ],
+        [
+            0xd5a580695b6a1c1d,
+            0x037b0b789edb0468,
+            0x47e836a82bea2ef2,
+            0x48de21241d412e54,
+        ],
     ];
-    
+    let test_asset_y = vec![
+        [
+            0x9bcac7532f04e919,
+            0x961da8bf207edb87,
+            0xc3c627ca7d362f99,
+            0x5efe1928acc90404,
+        ],
+        [
+            0xdb9e7c485fa2d6c9,
+            0xa6171e2bb3c5dd26,
+            0xe37c6f10d978ccd2,
+            0x6b21a02247f361e9,
+        ],
+        [
+            0xaa97101ca0d34db2,
+            0x1815d4cbef70f8f1,
+            0x83a35895d1dbe23d,
+            0x5d119aa42dc87aab,
+        ],
+        [
+            0xd5dc174369eaa894,
+            0x305bfecbe41ba747,
+            0xf88af722acb2535c,
+            0x36452685cea5789c,
+        ],
+        [
+            0xe2c02a85e15f5d29,
+            0xb1782310436ade8b,
+            0x4f90be1af7ece152,
+            0x1fe001f090d63785,
+        ],
+        [
+            0x71357d8dcfdc713,
+            0xbe63f8b3d5406d7c,
+            0xf40709a8cb71b14e,
+            0x654f65c12316c371,
+        ],
+        [
+            0x223d151d5d6aae3a,
+            0xf2ee1b3949f098a6,
+            0x2114a1e2d31aa2a9,
+            0x400837888df6d6e2,
+        ],
+        [
+            0xc7ec82a0d7469979,
+            0xa72cb6d5f5e41cc5,
+            0xc6695fc13a620157,
+            0x662c16464ba01ddd,
+        ],
+        [
+            0xcf8bb99b7698dab7,
+            0x9bfeeba948524ac5,
+            0x21b316672fa0f7fa,
+            0x1a08da6e6dcee341,
+        ],
+        [
+            0x5156307ea5c86dce,
+            0xb5f4b87dbafa641a,
+            0xb98d68e1313b4992,
+            0x6da0b1c852934297,
+        ],
+        [
+            0x1d816301cb3ac4ee,
+            0xf38db6cbc7c9b57a,
+            0xb898f40a35634fa,
+            0x420fa77b59469d81,
+        ],
+        [
+            0x106d91449269de4d,
+            0xb48c4043d6b5a31d,
+            0xeab7f990979121eb,
+            0x40ae4b1f9b7e1ecf,
+        ],
+        [
+            0xe72a4f850a992e21,
+            0x8850787ee5ec4ebc,
+            0x5d02f5fc81d332de,
+            0x70ba444f140875eb,
+        ],
+    ];
+
     for i in 0..13 {
         let asset = &test_assets[i];
-        let x = Fr::from_repr(FrRepr(test_asset_x[i])).expect("Test case value generator x invalid");
-        let y = Fr::from_repr(FrRepr(test_asset_y[i])).expect("Test case value generator y invalid");
+        let x =
+            Fr::from_repr(FrRepr(test_asset_x[i])).expect("Test case value generator x invalid");
+        let y =
+            Fr::from_repr(FrRepr(test_asset_y[i])).expect("Test case value generator y invalid");
         let p = asset.asset_generator(&JUBJUB);
 
         assert_eq!(p.to_xy().0, x);

@@ -47,9 +47,8 @@ pub fn group_hash<E: JubjubEngine>(
 pub fn find_group_hash<E: JubjubEngine>(
     m: &[u8],
     personalization: &[u8; 8],
-    params: &E::Params
-) -> edwards::Point<E, PrimeOrder>
-{
+    params: &E::Params,
+) -> edwards::Point<E, PrimeOrder> {
     let mut tag = m.to_vec();
     let i = tag.len();
     tag.push(0u8);
@@ -59,26 +58,26 @@ pub fn find_group_hash<E: JubjubEngine>(
     // (point on the JubJub curve) can fail in one of three ways:
     //
     // 1. The tag could hash to a small order point on the curve. Since the JubJub
-    // curve is the direct sum of a small order subgroup with a large 
+    // curve is the direct sum of a small order subgroup with a large
     // prime order subgroup, the BLAKE2s image of the tag may be the y
-    // coordinate of a small order point on the curve, and so when 
+    // coordinate of a small order point on the curve, and so when
     // multiplied by the cofactor gives the identity. The small order subgroup
-    // contains very few elements, so the probability of hashing to one of these 
+    // contains very few elements, so the probability of hashing to one of these
     // points is extremely small (exponentially small).
     // Tags whose BLAKE2s hash is a small order point are rejected.
-    // 
-    // 2. The tag could hash to a 255 bit integer that is at least the modulus 
-    // of the underlying field of the JubJub curve, and therefore is not a 
+    //
+    // 2. The tag could hash to a 255 bit integer that is at least the modulus
+    // of the underlying field of the JubJub curve, and therefore is not a
     // valid field element unless taken modulo the order of the field.
     // The probability of this event is approximately 9.431% and so it occurs
     // reasonably often.
     // Tags whose BLAKE2s hash is larger than the field modulus are rejected.
-    // 
-    // 3. The tag could hash to a field element such that no point on 
+    //
+    // 3. The tag could hash to a field element such that no point on
     // the curve has that y coordinate. Then it is not possible to interpret
     // the BLAKE2s hash image as a curve point/group element at all.
     // The probability of this event is approximately (but not precisely) 1/2
-    // Tags whose BLAKE2s hash is not the y coordinate of some curve point 
+    // Tags whose BLAKE2s hash is not the y coordinate of some curve point
     // are rejected.
     //
     // The overall probability that a uniformly random tag hashes successfully
@@ -86,11 +85,7 @@ pub fn find_group_hash<E: JubjubEngine>(
     // number of loops is approximately 2.2
 
     loop {
-        let gh = group_hash(
-            &tag,
-            personalization,
-            params
-        );
+        let gh = group_hash(&tag, personalization, params);
 
         // We don't want to overflow and start reusing generators
         assert!(tag[i] != u8::max_value());

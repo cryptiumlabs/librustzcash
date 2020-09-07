@@ -7,9 +7,9 @@ use pairing::bls12_381::{Bls12, Fr, FrRepr};
 use std::io::{self, Read, Write};
 
 use crate::legacy::Script;
+use crate::note_encryption::{ENC_CIPHERTEXT_SIZE, OUT_CIPHERTEXT_SIZE};
 use crate::redjubjub::{PublicKey, Signature};
 use crate::JUBJUB;
-use crate::note_encryption::{ENC_CIPHERTEXT_SIZE, OUT_CIPHERTEXT_SIZE};
 
 pub mod amount;
 pub use self::amount::Amount;

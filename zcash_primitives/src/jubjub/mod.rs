@@ -76,7 +76,7 @@ pub enum FixedGenerators {
     /// generator.
     /// Not used in the MASP.
     //ValueCommitmentValue = 3,
-    
+
     /// The value commitment is randomized over this generator,
     /// for privacy.
     ValueCommitmentRandomness = 3,

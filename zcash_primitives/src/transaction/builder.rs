@@ -22,8 +22,7 @@ use crate::{
         components::{amount::DEFAULT_FEE, Amount, OutputDescription, SpendDescription, TxOut},
         signature_hash_data, Transaction, TransactionData, SIGHASH_ALL,
     },
-    JUBJUB,
-    ASSET_TYPE_DEFAULT,
+    ASSET_TYPE_DEFAULT, JUBJUB,
 };
 
 #[cfg(feature = "transparent-inputs")]
@@ -604,8 +603,14 @@ impl<R: RngCore + CryptoRng> Builder<R> {
                 let esk = generate_esk(&mut self.rng);
                 let epk = dummy_note.g_d.mul(esk, &JUBJUB);
 
-                let (zkproof, cv) =
-                    prover.output_proof(&mut ctx, esk, dummy_to, dummy_note.r, dummy_note.value, dummy_note.asset_type);
+                let (zkproof, cv) = prover.output_proof(
+                    &mut ctx,
+                    esk,
+                    dummy_to,
+                    dummy_note.r,
+                    dummy_note.value,
+                    dummy_note.asset_type,
+                );
 
                 let cmu = dummy_note.cm(&JUBJUB);
 
@@ -652,7 +657,12 @@ impl<R: RngCore + CryptoRng> Builder<R> {
         }
         self.mtx.binding_sig = Some(
             prover
-                .single_binding_sig(&mut ctx, *ASSET_TYPE_DEFAULT, i64::from(self.mtx.value_balance), &sighash)
+                .single_binding_sig(
+                    &mut ctx,
+                    *ASSET_TYPE_DEFAULT,
+                    i64::from(self.mtx.value_balance),
+                    &sighash,
+                )
                 .map_err(|()| Error::BindingSig)?,
         );
 
@@ -683,8 +693,7 @@ mod tests {
         sapling::Node,
         transaction::components::Amount,
         zip32::{ExtendedFullViewingKey, ExtendedSpendingKey},
-        JUBJUB,
-        ASSET_TYPE_DEFAULT,
+        ASSET_TYPE_DEFAULT, JUBJUB,
     };
 
     #[test]

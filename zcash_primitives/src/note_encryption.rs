@@ -1,13 +1,13 @@
 //! Implementation of in-band secret distribution for Zcash transactions.
 
 use crate::{
+    constants::ASSET_IDENTIFIER_LENGTH,
     jubjub::{
         edwards,
         fs::{Fs, FsRepr},
         PrimeOrder, ToUniform, Unknown,
     },
     primitives::{AssetType, Diversifier, Note, PaymentAddress},
-    constants::ASSET_IDENTIFIER_LENGTH, 
 };
 use blake2b_simd::{Hash as Blake2bHash, Params as Blake2bParams};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -24,22 +24,27 @@ pub const KDF_SAPLING_PERSONALIZATION: &[u8; 16] = b"Zcash_SaplingKDF";
 pub const PRF_OCK_PERSONALIZATION: &[u8; 16] = b"Zcash_Derive_ock";
 
 // size of the note minus asset type. Equal to COMPACT_NOTE_SIZE of original Sapling
-const TYPELESS_NOTE_SIZE: usize = ( // in bytes
+const TYPELESS_NOTE_SIZE: usize = (
+    // in bytes
     1  + // version
     11 + // diversifier
     8  + // value
-    32 // rcv
+    32
+    // rcv
 );
 
-const TYPED_NOTE_SIZE: usize = ( // in bytes
+const TYPED_NOTE_SIZE: usize = (
+    // in bytes
     TYPELESS_NOTE_SIZE + // original Sapling note size COMPACT_NOTE_SIZE
-    ASSET_IDENTIFIER_LENGTH // asset_type 32 byte string
+    ASSET_IDENTIFIER_LENGTH
+    // asset_type 32 byte string
 );
 
 const NOTE_PLAINTEXT_SIZE: usize = TYPED_NOTE_SIZE + 512;
 const OUT_PLAINTEXT_SIZE: usize = (
     32 + // pk_d
-    32 // esk
+    32
+    // esk
 );
 pub const ENC_CIPHERTEXT_SIZE: usize = NOTE_PLAINTEXT_SIZE + 16;
 pub const OUT_CIPHERTEXT_SIZE: usize = OUT_PLAINTEXT_SIZE + 16;
@@ -585,10 +590,10 @@ mod tests {
     use super::{
         kdf_sapling, prf_ock, sapling_ka_agree, try_sapling_compact_note_decryption,
         try_sapling_note_decryption, try_sapling_output_recovery, Memo, SaplingNoteEncryption,
-        TYPED_NOTE_SIZE, ENC_CIPHERTEXT_SIZE, NOTE_PLAINTEXT_SIZE, OUT_CIPHERTEXT_SIZE,
-        OUT_PLAINTEXT_SIZE,
+        ENC_CIPHERTEXT_SIZE, NOTE_PLAINTEXT_SIZE, OUT_CIPHERTEXT_SIZE, OUT_PLAINTEXT_SIZE,
+        TYPED_NOTE_SIZE,
     };
-    use crate::{keys::OutgoingViewingKey, JUBJUB, ASSET_TYPE_DEFAULT};
+    use crate::{keys::OutgoingViewingKey, ASSET_TYPE_DEFAULT, JUBJUB};
 
     #[test]
     fn memo_from_str() {
@@ -761,10 +766,8 @@ mod tests {
 
         // Construct the value commitment for the proof instance
         let value = 100;
-        let value_commitment = ASSET_TYPE_DEFAULT.value_commitment(
-            value,
-            Fs::random(&mut rng),
-            &JUBJUB);
+        let value_commitment =
+            ASSET_TYPE_DEFAULT.value_commitment(value, Fs::random(&mut rng), &JUBJUB);
         let cv = value_commitment.cm(&JUBJUB).into();
 
         let note = pa
@@ -1375,7 +1378,9 @@ mod tests {
             //};
             //TODO: was different in master
             let to = PaymentAddress::from_parts(Diversifier(tv.default_d), pk_d).unwrap();
-            let note = to.create_note(*ASSET_TYPE_DEFAULT, tv.v, rcm, &JUBJUB).unwrap();
+            let note = to
+                .create_note(*ASSET_TYPE_DEFAULT, tv.v, rcm, &JUBJUB)
+                .unwrap();
             assert_eq!(note.cm(&JUBJUB), cmu);
 
             //

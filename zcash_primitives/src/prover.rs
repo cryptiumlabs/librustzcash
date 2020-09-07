@@ -75,9 +75,9 @@ pub trait TxProver {
     fn multi_binding_sig(
         &self,
         ctx: &mut Self::SaplingProvingContext,
-        asset_and_value: &[ (AssetType<Bls12>, i64) ],
+        asset_and_value: &[(AssetType<Bls12>, i64)],
         sighash: &[u8; 32],
-    ) -> Result<Signature, ()>; 
+    ) -> Result<Signature, ()>;
 }
 
 #[cfg(test)]
@@ -87,7 +87,7 @@ pub(crate) mod mock {
     use rand_core::OsRng;
 
     use crate::{
-        jubjub::{PrimeOrder, JubjubBls12, edwards, fs::Fs, FixedGenerators, Unknown},
+        jubjub::{edwards, fs::Fs, FixedGenerators, JubjubBls12, PrimeOrder, Unknown},
         primitives::{AssetType, Diversifier, PaymentAddress, ProofGenerationKey},
     };
 
@@ -130,12 +130,10 @@ pub(crate) mod mock {
         > {
             let mut rng = OsRng;
 
-            let cv = asset_type.value_commitment(
-                value, 
-                Fs::random(&mut rng),
-                &JUBJUB)
-            .cm(&JUBJUB)
-            .into();
+            let cv = asset_type
+                .value_commitment(value, Fs::random(&mut rng), &JUBJUB)
+                .cm(&JUBJUB)
+                .into();
 
             let rk = PublicKey::<Bls12>(proof_generation_key.ak.clone().into()).randomize(
                 ar,
@@ -157,12 +155,10 @@ pub(crate) mod mock {
         ) -> ([u8; GROTH_PROOF_SIZE], edwards::Point<Bls12, Unknown>) {
             let mut rng = OsRng;
 
-            let cv = asset_type.value_commitment(
-                value,
-                Fs::random(&mut rng),
-                &JUBJUB)
-            .cm(&JUBJUB)
-            .into();
+            let cv = asset_type
+                .value_commitment(value, Fs::random(&mut rng), &JUBJUB)
+                .cm(&JUBJUB)
+                .into();
 
             ([0u8; GROTH_PROOF_SIZE], cv)
         }
@@ -170,7 +166,7 @@ pub(crate) mod mock {
         fn single_binding_sig(
             &self,
             _ctx: &mut Self::SaplingProvingContext,
-            _asset_type : AssetType<Bls12>,
+            _asset_type: AssetType<Bls12>,
             _value_balance: i64,
             _sighash: &[u8; 32],
         ) -> Result<Signature, ()> {
@@ -180,7 +176,7 @@ pub(crate) mod mock {
         fn multi_binding_sig(
             &self,
             _ctx: &mut Self::SaplingProvingContext,
-            _assets_and_values : &[(AssetType<Bls12>,i64)],
+            _assets_and_values: &[(AssetType<Bls12>, i64)],
             _sighash: &[u8; 32],
         ) -> Result<Signature, ()> {
             Err(())
