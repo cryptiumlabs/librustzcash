@@ -189,7 +189,7 @@ impl TxProver for LocalTxProver {
     fn single_binding_sig(
         &self,
         ctx: &mut Self::SaplingProvingContext,
-        asset_type : AssetType<Bls12>,
+        asset_type: AssetType<Bls12>,
         value_balance: i64,
         sighash: &[u8; 32],
     ) -> Result<Signature, ()> {
@@ -199,7 +199,7 @@ impl TxProver for LocalTxProver {
     fn multi_binding_sig(
         &self,
         ctx: &mut Self::SaplingProvingContext,
-        assets_and_values : &[(AssetType<Bls12>, i64)],
+        assets_and_values: &[(AssetType<Bls12>, i64)],
         sighash: &[u8; 32],
     ) -> Result<Signature, ()> {
         ctx.multi_binding_sig(assets_and_values, sighash, &JUBJUB)

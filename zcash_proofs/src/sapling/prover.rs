@@ -75,11 +75,7 @@ impl SaplingProvingContext {
         }
 
         // Construct the value commitment
-        let value_commitment = asset_type.value_commitment(
-            value,
-            rcv,
-            params
-        );
+        let value_commitment = asset_type.value_commitment(value, rcv, params);
 
         // Construct the viewing key
         let viewing_key = proof_generation_key.to_viewing_key(params);
@@ -213,11 +209,7 @@ impl SaplingProvingContext {
         }
 
         // Construct the value commitment for the proof instance
-        let value_commitment = asset_type.value_commitment(
-            value,
-            rcv,
-            params
-        );
+        let value_commitment = asset_type.value_commitment(value, rcv, params);
 
         // We now have a full witness for the output proof.
         let instance = Output {
@@ -272,10 +264,11 @@ impl SaplingProvingContext {
         // against our derived bvk.
         {
             // Compute value balance
-            let mut value_balance = match masp_compute_value_balance(asset_type, value_balance, params) {
-                Some(a) => a,
-                None => return Err(()),
-            };
+            let mut value_balance =
+                match masp_compute_value_balance(asset_type, value_balance, params) {
+                    Some(a) => a,
+                    None => return Err(()),
+                };
 
             // Subtract value_balance from cv_sum to get final bvk
             value_balance = value_balance.negate();
@@ -308,11 +301,11 @@ impl SaplingProvingContext {
 
     /// Create the multi bindingSig for a Sapling transaction. All calls to spend_proof()
     /// and output_proof() must be completed before calling this function.
-    /// This function is only necessary when shielding or unshielding multiple assets 
+    /// This function is only necessary when shielding or unshielding multiple assets
     /// in one transaction
     pub fn multi_binding_sig(
         &self,
-        asset_and_value: &[ (AssetType<Bls12>, i64) ],
+        asset_and_value: &[(AssetType<Bls12>, i64)],
         sighash: &[u8; 32],
         params: &JubjubBls12,
     ) -> Result<Signature, ()> {
@@ -328,18 +321,17 @@ impl SaplingProvingContext {
         // In order to check internal consistency, let's use the accumulated value
         // commitments (as the verifier would) and apply value_balance to compare
         // against our derived bvk.
-        let value_balance = asset_and_value.iter().map( |(asset_type, value_balance)|
-            {
+        let value_balance = asset_and_value
+            .iter()
+            .map(|(asset_type, value_balance)| {
                 // Compute value balance for each asset
                 masp_compute_value_balance(*asset_type, *value_balance, params)
             })
-            .try_fold(self.cv_sum.clone(), |tmp, value_balance| 
-            {
+            .try_fold(self.cv_sum.clone(), |tmp, value_balance| {
                 // Compute cv_sum minus sum of all value balances
-                // Error for bad value balances (-INT64_MAX value) 
+                // Error for bad value balances (-INT64_MAX value)
                 Ok(tmp.add(&value_balance.ok_or(())?.negate(), params))
-            }
-        )?; 
+            })?;
         // The result should be the same, unless the provided valueBalance is wrong.
         if bvk.0 != value_balance {
             return Err(());

@@ -7,9 +7,9 @@ use bellman::groth16::generate_random_parameters;
 use pairing::bls12_381::Bls12;
 use rand_core::OsRng;
 use std::fs::File;
+use zcash_primitives::constants;
 use zcash_primitives::JUBJUB;
 use zcash_proofs::circuit::sapling::{Output, Spend, TREE_DEPTH};
-use zcash_primitives::constants;
 
 fn main() {
     let mut rng = OsRng;
@@ -38,7 +38,7 @@ fn main() {
             payment_address: None,
             commitment_randomness: None,
             esk: None,
-            asset_identifier: vec![None; constants::ASSET_IDENTIFIER_LENGTH*8],
+            asset_identifier: vec![None; constants::ASSET_IDENTIFIER_LENGTH * 8],
         },
         &mut rng,
     )

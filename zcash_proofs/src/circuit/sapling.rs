@@ -73,33 +73,39 @@ pub struct Output<'a, E: JubjubEngine> {
 fn expose_value_commitment<E, CS>(
     mut cs: CS,
     value_commitment: Option<ValueCommitment<E>>,
-    params: &E::Params
+    params: &E::Params,
 ) -> Result<(Vec<boolean::Boolean>, Vec<boolean::Boolean>), SynthesisError>
-    where E: JubjubEngine,
-          CS: ConstraintSystem<E>
+where
+    E: JubjubEngine,
+    CS: ConstraintSystem<E>,
 {
     // Witness the asset type
     let asset_generator = ecc::EdwardsPoint::witness(
         cs.namespace(|| "asset_generator"),
-        value_commitment.as_ref().map(|vc| vc.asset_generator.clone()),
-        params
+        value_commitment
+            .as_ref()
+            .map(|vc| vc.asset_generator.clone()),
+        params,
     )?;
 
     // Booleanize the asset type
-    let asset_generator_bits = asset_generator.repr(
-        cs.namespace(|| "unpack asset_generator")
-    )?;
+    let asset_generator_bits = asset_generator.repr(cs.namespace(|| "unpack asset_generator"))?;
 
     // Clear the cofactor of the asset generator, producing the value commitment generator
-    let asset_generator = asset_generator.double(cs.namespace(|| "asset_generator first doubling"), params)?;
-    let asset_generator = asset_generator.double(cs.namespace(|| "asset_generator second doubling"), params)?;
-    let asset_generator = asset_generator.double(cs.namespace(|| "asset_generator third doubling"), params)?;
+    let asset_generator =
+        asset_generator.double(cs.namespace(|| "asset_generator first doubling"), params)?;
+    let asset_generator =
+        asset_generator.double(cs.namespace(|| "asset_generator second doubling"), params)?;
+    let asset_generator =
+        asset_generator.double(cs.namespace(|| "asset_generator third doubling"), params)?;
 
     // (0, -1) is a small order point, but won't ever appear here
     // because cofactor is 2^3, and we performed three doublings.
     // (0, 1) is the neutral element, so checking if x is nonzero
     // is sufficient to prevent small order points here.
-    asset_generator.get_x().assert_nonzero(cs.namespace(|| "check asset_generator != 0"))?;
+    asset_generator
+        .get_x()
+        .assert_nonzero(cs.namespace(|| "check asset_generator != 0"))?;
 
     // Booleanize the value into little-endian bit order
     let value_bits = boolean::u64_into_boolean_vec_le(
@@ -452,14 +458,13 @@ impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
         // Ensure the input identifier is 32 bytes
         assert_eq!(256, self.asset_identifier.len());
 
-        for (i, bit) in self.asset_identifier.iter().enumerate() { 
+        for (i, bit) in self.asset_identifier.iter().enumerate() {
             let cs = &mut cs.namespace(|| format!("witness asset type bit {}", i));
-            
+
             //  Witness each bit of the asset identifier
-            let asset_identifier_preimage_bit = boolean::Boolean::from(boolean::AllocatedBit::alloc(
-                cs.namespace(|| "asset type bit"),
-                *bit,
-            )?);
+            let asset_identifier_preimage_bit = boolean::Boolean::from(
+                boolean::AllocatedBit::alloc(cs.namespace(|| "asset type bit"), *bit)?,
+            );
 
             // Push this boolean for asset generator computation later
             asset_generator_preimage.push(asset_identifier_preimage_bit.clone());
@@ -484,23 +489,24 @@ impl<'a, E: JubjubEngine> Circuit<E> for Output<'a, E> {
 
         // Ensure the witnessed asset generator is 32 bytes
         assert_eq!(256, asset_generator_bits.len());
-        
+
         // Ensure the computed asset generator is 32 bytes
         assert_eq!(256, asset_generator_image.len());
-        
+
         // Check integrity of the asset generator
-        // The following 256 constraints may not be strictly 
+        // The following 256 constraints may not be strictly
         // necessary; the output of the BLAKE2s hash may be
         // interpreted directly as a curve point instead
         // However, witnessing the asset generator separately
         // and checking equality to the image of the hash
         // is conceptually clear and not particularly expensive
-        for (i, asset_generator_bit, asset_generator_image_bit) in 
-                multizip((0..256, &asset_generator_bits, &asset_generator_image)) {
+        for (i, asset_generator_bit, asset_generator_image_bit) in
+            multizip((0..256, &asset_generator_bits, &asset_generator_image))
+        {
             boolean::Boolean::enforce_equal(
                 cs.namespace(|| format!("integrity of asset generator bit {}", i)),
-                asset_generator_bit, 
-                asset_generator_image_bit
+                asset_generator_bit,
+                asset_generator_image_bit,
             )?;
         }
 
@@ -643,16 +649,13 @@ fn test_input_circuit_with_bls12_381() {
     let tree_depth = 32;
 
     for i in 0..400 {
-        let asset_type = if i < 10 {  
+        let asset_type = if i < 10 {
             AssetType::<Bls12>::new(b"default", params)
         } else {
             AssetType::<Bls12>::new(i.to_string().as_bytes(), params)
         };
-        let mut value_commitment = asset_type.value_commitment(
-            rng.next_u64(),
-            fs::Fs::random(rng),
-            params
-        );
+        let mut value_commitment =
+            asset_type.value_commitment(rng.next_u64(), fs::Fs::random(rng), params);
 
         if i >= 200 {
             value_commitment.asset_generator = value_commitment.asset_generator.negate();
@@ -823,7 +826,7 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
         "4723282540978794624483635488138659467675602905263923545920612233258386488162",
         "9817985978230076566482131380463677459892992710371329861360645363311468893053",
         "27618789340710350120647137095252986938132361388195675764406370494688910938013",
-        ];
+    ];
     let expected_cm_ys = vec![
         "34821791232396287888199995100305255761362584209078006239735148846881442279277",
         "25119990066174545608121950753413857831099772082356729649061420500567639159355",
@@ -835,16 +838,17 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
         "37409705443279116387495124812424670311932220465698221026006921521796611194301",
         "4817145647901840172966045688653436033808505237142136464043537162611284452519",
         "33112537425917174283144333017659536059363113223507009786626165162100944911092",
-        ];
+    ];
 
     let asset_type = AssetType::<Bls12>::from_identifier(
         b"sO\x0e\xc5os\x1e\x02\xccs~ki=\xb5+\x82\x1fonL\xd7\xfe<vCS\xf2cf\x9f\xbe", // b'default' under repeated hashing
-        params);
+        params,
+    );
     for i in 0..10 {
         let value_commitment = asset_type.value_commitment(
             i,
             fs::Fs::from_str(&(1000 * (i + 1)).to_string()).unwrap(),
-            params
+            params,
         );
 
         let nsk = fs::Fs::random(rng);
@@ -987,7 +991,7 @@ fn test_output_circuit_with_bls12_381() {
     use rand_core::{RngCore, SeedableRng};
     use rand_xorshift::XorShiftRng;
     use zcash_primitives::{
-        jubjub::{JubjubBls12, fs, edwards},
+        jubjub::{edwards, fs, JubjubBls12},
         primitives::{AssetType, Diversifier, ProofGenerationKey},
     };
 
@@ -998,17 +1002,14 @@ fn test_output_circuit_with_bls12_381() {
     ]);
 
     for i in 0..400 {
-        let asset_type = if i < 10 {  
+        let asset_type = if i < 10 {
             AssetType::<Bls12>::new(b"default", params)
         } else {
             AssetType::<Bls12>::new(i.to_string().as_bytes(), params)
         };
-        let mut value_commitment = asset_type.value_commitment(
-            rng.next_u64(),
-            fs::Fs::random(rng),
-            params
-        );
-        
+        let mut value_commitment =
+            asset_type.value_commitment(rng.next_u64(), fs::Fs::random(rng), params);
+
         if i >= 200 {
             value_commitment.asset_generator = value_commitment.asset_generator.negate();
         }
@@ -1066,12 +1067,15 @@ fn test_output_circuit_with_bls12_381() {
                 "93e445d7858e98c7138558df341f020aedfe75893535025587d64731e244276a"
             );
 
-            let expected_cm = payment_address.create_note(
-                asset_type,
-                value_commitment.value,
-                commitment_randomness,
-                params
-            ).expect("should be valid").cm(params);
+            let expected_cm = payment_address
+                .create_note(
+                    asset_type,
+                    value_commitment.value,
+                    commitment_randomness,
+                    params,
+                )
+                .expect("should be valid")
+                .cm(params);
 
             let expected_value_cm = value_commitment.cm(params).to_xy();
 

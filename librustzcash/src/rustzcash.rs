@@ -44,7 +44,7 @@ use std::os::windows::ffi::OsStringExt;
 
 use zcash_primitives::{
     block::equihash,
-    constants::{CRH_IVK_PERSONALIZATION, ASSET_IDENTIFIER_LENGTH},
+    constants::{ASSET_IDENTIFIER_LENGTH, CRH_IVK_PERSONALIZATION},
     jubjub::{
         edwards,
         fs::{Fs, FsRepr},
@@ -52,7 +52,7 @@ use zcash_primitives::{
     },
     merkle_tree::MerklePath,
     note_encryption::sapling_ka_agree,
-    primitives::{AssetType, Diversifier, Note, PaymentAddress, ProofGenerationKey, ViewingKey,},
+    primitives::{AssetType, Diversifier, Note, PaymentAddress, ProofGenerationKey, ViewingKey},
     redjubjub::{self, Signature},
     sapling::{merkle_hash, spend_sig},
     transaction::components::Amount,
@@ -410,10 +410,11 @@ fn priv_get_note(
 
     let pk_d = pk_d.as_prime_order(&JUBJUB).ok_or(())?;
 
-    let asset_type = match AssetType::<Bls12>::from_identifier(&unsafe { *asset_identifier }, &JUBJUB) {
-        Some(a) => a,
-        None => return Err(()),
-    };
+    let asset_type =
+        match AssetType::<Bls12>::from_identifier(&unsafe { *asset_identifier }, &JUBJUB) {
+            Some(a) => a,
+            None => return Err(()),
+        };
 
     // Deserialize randomness
     let r = Fs::from_repr(read_fs(unsafe { &*r })).map_err(|_| ())?;
@@ -447,7 +448,7 @@ pub extern "C" fn librustzcash_sapling_compute_nf(
     position: u64,
     result: *mut [c_uchar; 32],
 ) -> bool {
-    let note = match priv_get_note(diversifier, pk_d, &unsafe{ *asset_identifier }, value, r) {
+    let note = match priv_get_note(diversifier, pk_d, &unsafe { *asset_identifier }, value, r) {
         Ok(p) => p,
         Err(_) => return false,
     };
@@ -495,7 +496,7 @@ pub extern "C" fn librustzcash_sapling_compute_cm(
     r: *const [c_uchar; 32],
     result: *mut [c_uchar; 32],
 ) -> bool {
-    let note = match priv_get_note(diversifier, pk_d, &unsafe{ *asset_identifier }, value, r) {
+    let note = match priv_get_note(diversifier, pk_d, &unsafe { *asset_identifier }, value, r) {
         Ok(p) => p,
         Err(_) => return false,
     };
@@ -725,11 +726,11 @@ pub extern "C" fn librustzcash_sapling_single_final_check(
     binding_sig: *const [c_uchar; 64],
     sighash_value: *const [c_uchar; 32],
 ) -> bool {
-
-    let asset_type = match AssetType::<Bls12>::from_identifier(&unsafe{ *asset_identifier }, &JUBJUB) {
-        Some(a) => a,
-        None => return false,
-    };
+    let asset_type =
+        match AssetType::<Bls12>::from_identifier(&unsafe { *asset_identifier }, &JUBJUB) {
+            Some(a) => a,
+            None => return false,
+        };
 
     // Deserialize the signature
     let binding_sig = match Signature::read(&(unsafe { &*binding_sig })[..]) {
@@ -758,10 +759,11 @@ pub extern "C" fn librustzcash_sapling_multi_final_check(
     sighash_value: *const [c_uchar; 32],
 ) -> bool {
     // Collect the asset identifiers and values
-    let assets_and_values = match collect_assets_and_values(asset_identifiers, value_balances, asset_count){
-        Some(a) => a,
-        None => return false,
-    };
+    let assets_and_values =
+        match collect_assets_and_values(asset_identifiers, value_balances, asset_count) {
+            Some(a) => a,
+            None => return false,
+        };
 
     // Deserialize the signature
     let binding_sig = match Signature::read(&(unsafe { &*binding_sig })[..]) {
@@ -922,10 +924,11 @@ pub extern "C" fn librustzcash_sapling_output_proof(
         Err(_) => return false,
     };
 
-    let asset_type = match AssetType::<Bls12>::from_identifier(&unsafe{ *asset_identifier }, &JUBJUB) {
-        Some(a) => a,
-        None => return false,
-    };
+    let asset_type =
+        match AssetType::<Bls12>::from_identifier(&unsafe { *asset_identifier }, &JUBJUB) {
+            Some(a) => a,
+            None => return false,
+        };
 
     // Create proof
     let (proof, value_commitment) = unsafe { &mut *ctx }.output_proof(
@@ -1000,13 +1003,19 @@ pub extern "C" fn librustzcash_sapling_single_binding_sig(
     sighash: *const [c_uchar; 32],
     result: *mut [c_uchar; 64],
 ) -> bool {
-    let asset_type = match AssetType::<Bls12>::from_identifier(&unsafe{ *asset_identifier }, &JUBJUB) {
-        Some(a) => a,
-        None => return false,
-    };
+    let asset_type =
+        match AssetType::<Bls12>::from_identifier(&unsafe { *asset_identifier }, &JUBJUB) {
+            Some(a) => a,
+            None => return false,
+        };
 
     // Sign
-    let sig = match unsafe { &*ctx }.single_binding_sig(asset_type, value_balance, unsafe { &*sighash }, &JUBJUB) {
+    let sig = match unsafe { &*ctx }.single_binding_sig(
+        asset_type,
+        value_balance,
+        unsafe { &*sighash },
+        &JUBJUB,
+    ) {
         Ok(s) => s,
         Err(_) => return false,
     };
@@ -1018,29 +1027,25 @@ pub extern "C" fn librustzcash_sapling_single_binding_sig(
     true
 }
 
-/// Collect an array of asset identifiers and array of 
+/// Collect an array of asset identifiers and array of
 /// asset values into a vector of asset types and values
 fn collect_assets_and_values(
     asset_identifiers: *const c_uchar,
     value_balances: *const i64,
     asset_count: size_t,
-) -> Option<Vec<(AssetType::<Bls12>, i64)>> 
-{
+) -> Option<Vec<(AssetType<Bls12>, i64)>> {
     use std::convert::TryInto;
-    unsafe { 
-        std::slice::from_raw_parts(asset_identifiers, asset_count*ASSET_IDENTIFIER_LENGTH) 
-    }
-    .chunks_exact(ASSET_IDENTIFIER_LENGTH)
-    .zip(unsafe { 
-            std::slice::from_raw_parts(value_balances, asset_count)
-        })
-    .map(|(asset_identifier, value)|
-        AssetType::<Bls12>::from_identifier(
-            asset_identifier.try_into().expect("invalid asset id chunk"), 
-            &JUBJUB)
+    unsafe { std::slice::from_raw_parts(asset_identifiers, asset_count * ASSET_IDENTIFIER_LENGTH) }
+        .chunks_exact(ASSET_IDENTIFIER_LENGTH)
+        .zip(unsafe { std::slice::from_raw_parts(value_balances, asset_count) })
+        .map(|(asset_identifier, value)| {
+            AssetType::<Bls12>::from_identifier(
+                asset_identifier.try_into().expect("invalid asset id chunk"),
+                &JUBJUB,
+            )
             .map(|id| (id, *value))
-        )
-    .collect()
+        })
+        .collect()
 }
 
 /// This function (using the proving context) constructs a multiple asset binding signature.
@@ -1057,13 +1062,18 @@ pub extern "C" fn librustzcash_sapling_multi_binding_sig(
     result: *mut [c_uchar; 64],
 ) -> bool {
     // Collect the asset identifiers and values
-    let assets_and_values = match collect_assets_and_values(asset_identifiers, value_balances, asset_count){
-        Some(a) => a,
-        None => return false,
-    };
+    let assets_and_values =
+        match collect_assets_and_values(asset_identifiers, value_balances, asset_count) {
+            Some(a) => a,
+            None => return false,
+        };
 
     // Sign
-    let sig = match unsafe { &*ctx }.multi_binding_sig(&assets_and_values[..], unsafe { &*sighash }, &JUBJUB) {
+    let sig = match unsafe { &*ctx }.multi_binding_sig(
+        &assets_and_values[..],
+        unsafe { &*sighash },
+        &JUBJUB,
+    ) {
         Ok(s) => s,
         Err(_) => return false,
     };
@@ -1133,10 +1143,11 @@ pub extern "C" fn librustzcash_sapling_spend_proof(
         Err(_) => return false,
     };
 
-    let asset_type = match AssetType::<Bls12>::from_identifier(&unsafe{ *asset_identifier }, &JUBJUB) {
-        Some(a) => a,
-        None => return false,
-    };
+    let asset_type =
+        match AssetType::<Bls12>::from_identifier(&unsafe { *asset_identifier }, &JUBJUB) {
+            Some(a) => a,
+            None => return false,
+        };
 
     // We need to compute the anchor of the Spend.
     let anchor = match Fr::from_repr(read_fr(unsafe { &*anchor })) {

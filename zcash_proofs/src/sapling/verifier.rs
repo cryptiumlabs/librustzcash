@@ -6,8 +6,8 @@ use ff::Field;
 use pairing::bls12_381::{Bls12, Fr};
 use zcash_primitives::jubjub::{edwards, FixedGenerators, JubjubBls12, Unknown};
 use zcash_primitives::{
-    redjubjub::{PublicKey, Signature},
     primitives::AssetType,
+    redjubjub::{PublicKey, Signature},
     transaction::components::Amount,
 };
 
@@ -184,7 +184,8 @@ impl SaplingVerificationContext {
         let mut bvk = PublicKey(self.cv_sum.clone());
 
         // Compute value balance
-        let mut value_balance = match masp_compute_value_balance(asset_type, value_balance, params) {
+        let mut value_balance = match masp_compute_value_balance(asset_type, value_balance, params)
+        {
             Some(a) => a,
             None => return false,
         };
@@ -223,21 +224,21 @@ impl SaplingVerificationContext {
         let mut bvk = PublicKey(self.cv_sum.clone());
 
         // Compute value balance
-        let value_balances = assets_and_values.iter().map( |(asset_type, value_balance)|
-            {
+        let value_balances = assets_and_values
+            .iter()
+            .map(|(asset_type, value_balance)| {
                 // Compute value balance for each asset
                 masp_compute_value_balance(*asset_type, *value_balance, params)
-                // Error for bad value balances (-INT64_MAX value) 
-                .ok_or(())
+                    // Error for bad value balances (-INT64_MAX value)
+                    .ok_or(())
             })
             .collect::<Result<Vec<_>, _>>();
 
         bvk.0 = match value_balances {
-            Ok(vb) => vb.iter().fold(bvk.0, |tmp, value_balance| 
-                {
-                    // Compute cv_sum minus sum of all value balances
-                    tmp.add(&value_balance.negate(), params)
-                }),
+            Ok(vb) => vb.iter().fold(bvk.0, |tmp, value_balance| {
+                // Compute cv_sum minus sum of all value balances
+                tmp.add(&value_balance.negate(), params)
+            }),
             Err(_) => return false,
         };
 

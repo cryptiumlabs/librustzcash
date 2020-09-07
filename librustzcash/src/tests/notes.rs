@@ -1,8 +1,8 @@
+use super::JUBJUB;
 use crate::librustzcash_sapling_compute_cm;
 use crate::librustzcash_sapling_compute_nf;
-use zcash_primitives::primitives::AssetType;
 use pairing::bls12_381::Bls12;
-use super::JUBJUB;
+use zcash_primitives::primitives::AssetType;
 
 #[test]
 fn notes() {

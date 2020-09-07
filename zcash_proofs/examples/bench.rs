@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 use zcash_primitives::jubjub::{edwards, fs, JubjubBls12};
 use zcash_primitives::primitives::{Diversifier, ProofGenerationKey, ValueCommitment};
 use zcash_primitives::ASSET_TYPE_DEFAULT;
-use zcash_proofs::circuit::sapling::{Spend, Output};
+use zcash_proofs::circuit::sapling::{Output, Spend};
 
 const TREE_DEPTH: usize = 32;
 
@@ -118,39 +118,37 @@ fn main() {
 
     for i in 0..50 {
         println!("Running Output sample {}", i);
-        let value_commitment = ASSET_TYPE_DEFAULT.value_commitment(
-            rng.next_u64(),
-            fs::Fs::random(rng),
-            jubjub_params);
-    
+        let value_commitment =
+            ASSET_TYPE_DEFAULT.value_commitment(rng.next_u64(), fs::Fs::random(rng), jubjub_params);
+
         let nsk = fs::Fs::random(rng);
         let ak = edwards::Point::rand(rng, jubjub_params).mul_by_cofactor(jubjub_params);
-    
+
         let proof_generation_key = ProofGenerationKey {
             ak: ak.clone(),
             nsk: nsk.clone(),
         };
-    
+
         let viewing_key = proof_generation_key.to_viewing_key(jubjub_params);
-    
+
         let payment_address;
-    
+
         loop {
             let diversifier = {
                 let mut d = [0; 11];
                 rng.fill_bytes(&mut d);
                 Diversifier(d)
             };
-    
+
             if let Some(p) = viewing_key.to_payment_address(diversifier, jubjub_params) {
                 payment_address = p;
                 break;
             }
         }
-    
+
         let commitment_randomness = fs::Fs::random(rng);
         let esk = fs::Fs::random(rng);
-    
+
         let start = Instant::now();
         let _ = create_random_proof(
             Output {
@@ -168,7 +166,8 @@ fn main() {
         total_output_time += start.elapsed();
     }
     let output_avg = total_output_time / SAMPLES;
-    let output_avg = output_avg.subsec_nanos() as f64 / 1_000_000_000f64 + (output_avg.as_secs() as f64);
+    let output_avg =
+        output_avg.subsec_nanos() as f64 / 1_000_000_000f64 + (output_avg.as_secs() as f64);
 
     println!("Average Output proving time (in seconds): {}", output_avg);
 }

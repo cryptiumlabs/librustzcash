@@ -1,13 +1,8 @@
 //! Helpers for creating Sapling proofs.
 
 use pairing::bls12_381::Bls12;
-use zcash_primitives::jubjub::{
-    edwards, fs::FsRepr, JubjubBls12, Unknown,
-};
-use zcash_primitives::{
-    primitives::AssetType,
-    transaction::components::Amount,
-};
+use zcash_primitives::jubjub::{edwards, fs::FsRepr, JubjubBls12, Unknown};
+use zcash_primitives::{primitives::AssetType, transaction::components::Amount};
 
 mod prover;
 mod verifier;
