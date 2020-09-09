@@ -1,9 +1,11 @@
-#ifndef LIBRUSTZCASH_INCLUDE_H_
-#define LIBRUSTZCASH_INCLUDE_H_
+#ifndef LIBRUSTZCASH_MASP_INCLUDE_H_
+#define LIBRUSTZCASH_MASP_INCLUDE_H_
 
 #include <stdint.h>
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 #ifdef WIN32
     typedef uint16_t codeunit;
 #else
@@ -126,7 +128,7 @@ extern "C" {
     /// we can internally check consistency.
     bool librustzcash_sapling_binding_sig(
         const void *ctx,
-        uint32_t assetType,
+        const unsigned char *asset_identifier,
         int64_t valueBalance,
         const unsigned char *sighash,
         unsigned char *result
@@ -167,7 +169,7 @@ extern "C" {
     /// transaction given valueBalance and the binding signature.
     bool librustzcash_sapling_final_check(
         void *ctx,
-        uint32_t assetType,
+        const unsigned char *asset_identifier,
         int64_t valueBalance,
         const unsigned char *bindingSig,
         const unsigned char *sighashValue
@@ -342,6 +344,8 @@ extern "C" {
         const unsigned char *n_ptr,
         unsigned char *h_ret
     );
+#ifdef __cplusplus
 }
+#endif
 
-#endif // LIBRUSTZCASH_INCLUDE_H_
+#endif // LIBRUSTZCASH_MASP_INCLUDE_H_
