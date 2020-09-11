@@ -31,7 +31,7 @@ impl<E: JubjubEngine> AssetType<E> {
     /// Create a new AssetType from a unique asset name
     pub fn new(name: &[u8], nonce: Option<u8>, params: &E::Params) -> AssetType<E> {
         use std::slice::from_ref;
-        let nonce = nonce.unwrap_or(0b0);
+        let nonce = nonce.unwrap_or(0b8);
 
         // Check the personalization is acceptable length
         assert_eq!(ASSET_IDENTIFIER_PERSONALIZATION.len(), 8);
