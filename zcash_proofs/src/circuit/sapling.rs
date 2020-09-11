@@ -650,9 +650,9 @@ fn test_input_circuit_with_bls12_381() {
 
     for i in 0..400 {
         let asset_type = if i < 10 {
-            AssetType::<Bls12>::new(b"default", params)
+            AssetType::<Bls12>::new(b"default", Some(0b0), params)
         } else {
-            AssetType::<Bls12>::new(i.to_string().as_bytes(), params)
+            AssetType::<Bls12>::new(i.to_string().as_bytes(), Some(0b0), params)
         };
         let mut value_commitment =
             asset_type.value_commitment(rng.next_u64(), fs::Fs::random(rng), params);
@@ -843,7 +843,7 @@ fn test_input_circuit_with_bls12_381_external_test_vectors() {
     let asset_type = AssetType::<Bls12>::from_identifier(
         b"sO\x0e\xc5os\x1e\x02\xccs~ki=\xb5+\x82\x1fonL\xd7\xfe<vCS\xf2cf\x9f\xbe", // b'default' under repeated hashing
         params,
-    );
+    ).unwrap();
     for i in 0..10 {
         let value_commitment = asset_type.value_commitment(
             i,
@@ -1003,9 +1003,9 @@ fn test_output_circuit_with_bls12_381() {
 
     for i in 0..400 {
         let asset_type = if i < 10 {
-            AssetType::<Bls12>::new(b"default", params)
+            AssetType::<Bls12>::new(b"default", Some(0b0), params)
         } else {
-            AssetType::<Bls12>::new(i.to_string().as_bytes(), params)
+            AssetType::<Bls12>::new(i.to_string().as_bytes(), Some(0b0), params)
         };
         let mut value_commitment =
             asset_type.value_commitment(rng.next_u64(), fs::Fs::random(rng), params);

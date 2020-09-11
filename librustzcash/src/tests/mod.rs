@@ -85,7 +85,7 @@ fn sapling_generators() {
 
     {
         let mut vec = Vec::new();
-        let asset_type = AssetType::<Bls12>::new(b"default", &JUBJUB);
+        let asset_type = AssetType::<Bls12>::new(b"default", Some(0b0), &JUBJUB);
         let p = asset_type.asset_generator(&JUBJUB);
         p.write(&mut vec).unwrap();
         assert_eq!(&vec, &sapling_generators.vcvb);
