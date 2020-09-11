@@ -1,9 +1,11 @@
-#ifndef LIBRUSTZCASH_INCLUDE_H_
-#define LIBRUSTZCASH_INCLUDE_H_
+#ifndef LIBRUSTZCASH_MASP_INCLUDE_H_
+#define LIBRUSTZCASH_MASP_INCLUDE_H_
 
 #include <stdint.h>
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 #ifdef WIN32
     typedef uint16_t codeunit;
 #else
@@ -371,6 +373,8 @@ extern "C" {
         const unsigned char *n_ptr,
         unsigned char *h_ret
     );
+#ifdef __cplusplus
 }
+#endif
 
-#endif // LIBRUSTZCASH_INCLUDE_H_
+#endif // LIBRUSTZCASH_MASP_INCLUDE_H_
