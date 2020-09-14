@@ -31,7 +31,7 @@ impl<E: JubjubEngine> AssetType<E> {
     /// Create a new AssetType from a unique asset name
     pub fn new(name: &[u8], nonce: Option<u8>, params: &E::Params) -> AssetType<E> {
         use std::slice::from_ref;
-        let nonce = nonce.unwrap_or(0b8);
+        let nonce = nonce.unwrap_or(0u8);
 
         // Check the personalization is acceptable length
         assert_eq!(ASSET_IDENTIFIER_PERSONALIZATION.len(), 8);
@@ -428,7 +428,7 @@ impl<E: JubjubEngine> Note<E> {
         assert_eq!(
             note_contents.len(),
             32 + // asset_generator bytes
-            32 + // g_d bytes 
+            32 + // g_d bytes
             32 + // p_d bytes
             8 // value bytes
         );
@@ -486,7 +486,7 @@ fn test_value_commitment_generator() {
     use pairing::bls12_381::{Bls12, Fr, FrRepr};
 
     let test_assets = vec![ AssetType::<Bls12>::new(b"default", None, &JUBJUB),
-        AssetType::<Bls12>::new(b"", None, &JUBJUB), 
+        AssetType::<Bls12>::new(b"", None, &JUBJUB),
         AssetType::<Bls12>::new(b"The Magic Words are Squeamish Ossifrage", None, &JUBJUB),
         AssetType::<Bls12>::new(b"AliceToken", None, &JUBJUB),
         AssetType::<Bls12>::new(b"BobToken", None, &JUBJUB),
@@ -496,7 +496,7 @@ fn test_value_commitment_generator() {
         AssetType::<Bls12>::new(b"3.1415926535 8979323846 2643383279", None, &JUBJUB),
         AssetType::<Bls12>::new(b"KT1000000000000000000000000000000000000", None, &JUBJUB),
         AssetType::<Bls12>::new(b"KT1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ", None, &JUBJUB),
-        AssetType::<Bls12>::new(b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", None, &JUBJUB), 
+        AssetType::<Bls12>::new(b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", None, &JUBJUB),
         AssetType::<Bls12>::new(b"\x01\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xf0", None, &JUBJUB),
     ];
 
