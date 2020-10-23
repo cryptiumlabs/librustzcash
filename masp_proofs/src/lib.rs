@@ -1,6 +1,6 @@
-//! *Zcash circuits and proofs.*
+//! *MASP circuits and proofs.*
 //!
-//! `zcash_proofs` contains the zk-SNARK circuits used by Zcash, and the APIs for creating
+//! `masp_proofs` contains the zk-SNARK circuits used by MASP, and the APIs for creating
 //! and verifying proofs.
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
@@ -32,13 +32,13 @@ pub mod prover;
 
 // Circuit names
 #[cfg(feature = "local-prover")]
-const SAPLING_SPEND_NAME: &str = "sapling-spend.params";
+const MASP_SPEND_NAME: &str = "masp-spend.params";
 #[cfg(feature = "local-prover")]
-const SAPLING_OUTPUT_NAME: &str = "sapling-output.params";
+const MASP_OUTPUT_NAME: &str = "masp-output.params";
 
 // Circuit hashes
-const SAPLING_SPEND_HASH: &str = "5523057113d7daa078714f9859ea03da3c959f4fe3756a0ace4eb25f7cf41d1e21099dac768c2e0045400fee03c1f8bc14eeac2190c3f282e0092419d3b967e5";
-const SAPLING_OUTPUT_HASH: &str = "89fe551ad6c0281aebb857eb203dbf35854979503d374c83b12512dcd737e12a255869a34e3ff0f6609b78accc81ea5f5e94202e124a590730494eeeee86e755";
+const MASP_SPEND_HASH: &str = "5523057113d7daa078714f9859ea03da3c959f4fe3756a0ace4eb25f7cf41d1e21099dac768c2e0045400fee03c1f8bc14eeac2190c3f282e0092419d3b967e5";
+const MASP_OUTPUT_HASH: &str = "89fe551ad6c0281aebb857eb203dbf35854979503d374c83b12512dcd737e12a255869a34e3ff0f6609b78accc81ea5f5e94202e124a590730494eeeee86e755";
 
 #[cfg(feature = "download-params")]
 const DOWNLOAD_URL: &str = "https://download.z.cash/downloads";
@@ -49,9 +49,9 @@ const DOWNLOAD_URL: &str = "https://download.z.cash/downloads";
 pub fn default_params_folder() -> Option<PathBuf> {
     BaseDirs::new().map(|base_dirs| {
         if cfg!(any(windows, target_os = "macos")) {
-            base_dirs.data_dir().join("ZcashParams")
+            base_dirs.data_dir().join("MASPParams")
         } else {
-            base_dirs.home_dir().join(".zcash-params")
+            base_dirs.home_dir().join(".masp-params")
         }
     })
 }
@@ -103,8 +103,8 @@ pub fn download_parameters() -> Result<(), minreq::Error> {
         Ok(())
     };
 
-    fetch_params(SAPLING_SPEND_NAME, SAPLING_SPEND_HASH)?;
-    fetch_params(SAPLING_OUTPUT_NAME, SAPLING_OUTPUT_HASH)?;
+    fetch_params(MASP_SPEND_NAME, MASP_SPEND_HASH)?;
+    fetch_params(MASP_OUTPUT_NAME, MASP_OUTPUT_HASH)?;
 
     Ok(())
 }
@@ -119,8 +119,8 @@ pub fn load_parameters(
     PreparedVerifyingKey<Bls12>,
 ) {
     // Load from each of the paths
-    let spend_fs = File::open(spend_path).expect("couldn't load Sapling spend parameters file");
-    let output_fs = File::open(output_path).expect("couldn't load Sapling output parameters file");
+    let spend_fs = File::open(spend_path).expect("couldn't load MASP spend parameters file");
+    let output_fs = File::open(output_path).expect("couldn't load MASP output parameters file");
 
     parse_parameters(
         BufReader::with_capacity(1024 * 1024, spend_fs),
@@ -142,9 +142,9 @@ fn parse_parameters<R: io::Read>(
 
     // Deserialize params
     let spend_params = Parameters::<Bls12>::read(&mut spend_fs, false)
-        .expect("couldn't deserialize Sapling spend parameters file");
+        .expect("couldn't deserialize MASP spend parameters file");
     let output_params = Parameters::<Bls12>::read(&mut output_fs, false)
-        .expect("couldn't deserialize Sapling spend parameters file");
+        .expect("couldn't deserialize MASP spend parameters file");
 
     // There is extra stuff (the transcript) at the end of the parameter file which is
     // used to verify the parameter validity, but we're not interested in that. We do
@@ -152,16 +152,16 @@ fn parse_parameters<R: io::Read>(
     // with `b2sum` on the files.
     let mut sink = io::sink();
     io::copy(&mut spend_fs, &mut sink)
-        .expect("couldn't finish reading Sapling spend parameter file");
+        .expect("couldn't finish reading MASP spend parameter file");
     io::copy(&mut output_fs, &mut sink)
-        .expect("couldn't finish reading Sapling output parameter file");
+        .expect("couldn't finish reading MASP output parameter file");
 
-    if spend_fs.into_hash() != SAPLING_SPEND_HASH {
-        panic!("Sapling spend parameter file is not correct, please clean your `~/.zcash-params/` and re-run `fetch-params`.");
+    if spend_fs.into_hash() != MASP_SPEND_HASH {
+        panic!("MASP spend parameter file is not correct, please clean your `~/.masp-params/` and re-run `fetch-params`.");
     }
 
-    if output_fs.into_hash() != SAPLING_OUTPUT_HASH {
-        panic!("Sapling output parameter file is not correct, please clean your `~/.zcash-params/` and re-run `fetch-params`.");
+    if output_fs.into_hash() != MASP_OUTPUT_HASH {
+        panic!("MASP output parameter file is not correct, please clean your `~/.masp-params/` and re-run `fetch-params`.");
     }
 
     // Prepare verifying keys
