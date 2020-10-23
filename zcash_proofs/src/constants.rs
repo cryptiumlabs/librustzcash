@@ -8,7 +8,7 @@ use lazy_static::lazy_static;
 use zcash_primitives::constants::{PEDERSEN_HASH_CHUNKS_PER_GENERATOR, PEDERSEN_HASH_GENERATORS};
 
 /// The `d` constant of the twisted Edwards curve.
-pub(crate) const EDWARDS_D: Scalar = Scalar::from_raw([
+pub const EDWARDS_D: Scalar = Scalar::from_raw([
     0x0106_5fd6_d634_3eb1,
     0x292d_7f6d_3757_9d26,
     0xf5fd_9207_e6bd_7fd4,
@@ -16,7 +16,7 @@ pub(crate) const EDWARDS_D: Scalar = Scalar::from_raw([
 ]);
 
 /// The `A` constant of the birationally equivalent Montgomery curve.
-pub(crate) const MONTGOMERY_A: Scalar = Scalar::from_raw([
+pub const MONTGOMERY_A: Scalar = Scalar::from_raw([
     0x0000_0000_0000_a002,
     0x0000_0000_0000_0000,
     0x0000_0000_0000_0000,
@@ -24,7 +24,7 @@ pub(crate) const MONTGOMERY_A: Scalar = Scalar::from_raw([
 ]);
 
 /// The scaling factor used for conversion to and from the Montgomery form.
-pub(crate) const MONTGOMERY_SCALE: Scalar = Scalar::from_raw([
+pub const MONTGOMERY_SCALE: Scalar = Scalar::from_raw([
     0x8f45_35f7_cf82_b8d9,
     0xce40_6970_3da8_8abd,
     0x31de_341e_77d7_64e5,

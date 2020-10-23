@@ -1,6 +1,6 @@
-//! Sapling key components.
+//! MASP key components.
 //!
-//! Implements [section 4.2.2] of the Zcash Protocol Specification.
+//! Implements [section 4.2.2] of the Zcash Protocol Specification with modified personalizations
 //!
 //! [section 4.2.2]: https://zips.z.cash/protocol/protocol.pdf#saplingkeycomponents
 
@@ -179,6 +179,32 @@ impl FullViewingKey {
         result
     }
 }
+
+#[cfg(any(test, feature = "test-dependencies"))]
+pub mod testing {
+    use proptest::collection::vec;
+    use proptest::prelude::{any, prop_compose};
+
+    use crate::{
+        primitives::PaymentAddress,
+        zip32::{ExtendedFullViewingKey, ExtendedSpendingKey},
+    };
+
+    prop_compose! {
+        pub fn arb_extended_spending_key()(v in vec(any::<u8>(), 32..252)) -> ExtendedSpendingKey {
+            ExtendedSpendingKey::master(&v)
+        }
+    }
+
+    prop_compose! {
+        pub fn arb_shielded_addr()(extsk in arb_extended_spending_key()) -> PaymentAddress {
+            let extfvk = ExtendedFullViewingKey::from(&extsk);
+            extfvk.default_address().unwrap().1
+        }
+    }
+}
+
+
 
 #[cfg(test)]
 mod tests {
