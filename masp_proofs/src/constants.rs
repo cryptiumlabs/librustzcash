@@ -1,4 +1,4 @@
-//! Various constants used for the Zcash proofs.
+//! Various constants used for the MASP proofs.
 
 use bls12_381::Scalar;
 use group::{Curve, Group};

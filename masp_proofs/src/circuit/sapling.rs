@@ -1035,6 +1035,7 @@ fn test_output_circuit_with_bls12_381() {
                 assert!(!cs.is_satisfied());
             }
 
+            assert_eq!(cs.num_constraints(), 31205);
             assert_eq!(
                 cs.hash(),
                 "93e445d7858e98c7138558df341f020aedfe75893535025587d64731e244276a"

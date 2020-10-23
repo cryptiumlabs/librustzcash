@@ -1,4 +1,4 @@
-//! Gadget for Zcash's Pedersen hash.
+//! Gadget for MASP's Pedersen hash.
 
 use bellman::gadgets::boolean::Boolean;
 use bellman::gadgets::lookup::*;

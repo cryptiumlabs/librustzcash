@@ -12,7 +12,7 @@ use masp_primitives::{
 
 use super::masp_compute_value_balance;
 
-/// A context object for verifying the Sapling components of a Zcash transaction.
+/// A context object for verifying the Sapling components of an MASP transaction.
 pub struct SaplingVerificationContext {
     // (sum of the Spend value commitments) - (sum of the Output value commitments)
     cv_sum: jubjub::ExtendedPoint,
